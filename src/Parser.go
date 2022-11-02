@@ -2,21 +2,77 @@ package src
 
 import (
 	"bufio"
-	"fmt"
+	"encoding/json"
+	"encoding/xml"
 	"log"
 	"os"
 	"strings"
-	"time"
 )
 
 type PlasoObject struct {
-	Datetime      time.Time
-	Datetime_desc string
-	Source        string
-	Message       string
-	Parser        string
-	Display_name  string
-	Tag           string
+	Timestamp      float64
+	Timestamp_desc string
+	Source         string
+	Message        string
+	Parser         string
+	Display_name   string
+	xml_string     string
+	EvtxLog        *EvtxLog
+}
+
+type EvtxLog struct {
+	XMLName xml.Name `xml:"Event"`
+	Text    string   `xml:",chardata"`
+	Xmlns   string   `xml:"xmlns,attr"`
+	System  struct {
+		Text     string `xml:",chardata"`
+		Provider struct {
+			Text string `xml:",chardata"`
+			Name string `xml:"Name,attr"`
+			Guid string `xml:"Guid,attr"`
+		} `xml:"Provider"`
+		EventID     string `xml:"EventID"`
+		Version     string `xml:"Version"`
+		Level       string `xml:"Level"`
+		Task        string `xml:"Task"`
+		Opcode      string `xml:"Opcode"`
+		Keywords    string `xml:"Keywords"`
+		TimeCreated struct {
+			Text       string `xml:",chardata"`
+			SystemTime string `xml:"SystemTime,attr"`
+		} `xml:"TimeCreated"`
+		EventRecordID string `xml:"EventRecordID"`
+		Correlation   string `xml:"Correlation"`
+		Execution     struct {
+			Text      string `xml:",chardata"`
+			ProcessID string `xml:"ProcessID,attr"`
+			ThreadID  string `xml:"ThreadID,attr"`
+		} `xml:"Execution"`
+		Channel  string `xml:"Channel"`
+		Computer string `xml:"Computer"`
+		Security struct {
+			Text   string `xml:",chardata"`
+			UserID string `xml:"UserID,attr"`
+		} `xml:"Security"`
+	} `xml:"System"`
+	EventData struct {
+		Text string `xml:",chardata"`
+		Data []struct {
+			Text string `xml:",chardata"`
+			Name string `xml:"Name,attr"`
+		} `xml:"Data"`
+	} `xml:"EventData"`
+}
+
+func GetDataValue(evtx EvtxLog, name string) string {
+	data := evtx.EventData.Data
+
+	for _, d := range data {
+		if strings.Compare(d.Name, name) == 0 {
+			return d.Text
+		}
+	}
+	return "Not Found."
 }
 
 func handleErr(err error) {
@@ -50,16 +106,32 @@ func ParseFile(path string) []PlasoObject {
 
 func ParseLine(data string) PlasoObject {
 	var output PlasoObject
-	obj := strings.Split(data, ",")
-	t, _ := time.Parse(time.RFC3339, obj[0])
-	output = PlasoObject{t, obj[1], obj[3], obj[4], obj[5], obj[6], obj[7]}
+	var json_obj map[string]interface{}
+	json.Unmarshal([]byte(data), &json_obj)
+
+	//fmt.Println(json_obj["timestamp"])
+
+	output = PlasoObject{json_obj["timestamp"].(float64),
+		json_obj["timestamp_desc"].(string),
+		json_obj["data_type"].(string),
+		json_obj["message"].(string),
+		json_obj["parser"].(string),
+		json_obj["display_name"].(string),
+		"", nil}
+
+	if strings.Compare(output.Parser, "winevtx") == 0 {
+		//fmt.Println(json_obj["xml_string"])
+		output.EvtxLog = ParseEvtx(json_obj["xml_string"].(string))
+	}
 
 	return output
 }
 
-func PlasoObjectPrint(data PlasoObject) {
-	fmt.Println("Source: ", data.Source)
-	fmt.Println("Message: ", data.Message)
-	fmt.Println("Parser: ", data.Parser)
-	fmt.Println("Display Name: ", data.Display_name)
+func ParseEvtx(data string) *EvtxLog {
+	var evtxLog EvtxLog
+
+	//fmt.Println([]byte(data))
+	xml.Unmarshal([]byte(data), &evtxLog)
+	//fmt.Println(fmt.Sprint(evtxLog))
+	return &evtxLog
 }
