@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-type PlasoObject struct {
+type PlasoLog2 struct {
 	Timestamp      float64
 	Timestamp_desc string
 	Source         string
@@ -21,47 +21,48 @@ type PlasoObject struct {
 }
 
 type EvtxLog struct {
-	XMLName xml.Name `xml:"Event"`
-	Text    string   `xml:",chardata"`
-	Xmlns   string   `xml:"xmlns,attr"`
-	System  struct {
-		Text     string `xml:",chardata"`
+	System struct {
 		Provider struct {
-			Text string `xml:",chardata"`
 			Name string `xml:"Name,attr"`
 			Guid string `xml:"Guid,attr"`
 		} `xml:"Provider"`
-		EventID     string `xml:"EventID"`
+		EventID     int    `xml:"EventID"`
 		Version     string `xml:"Version"`
-		Level       string `xml:"Level"`
-		Task        string `xml:"Task"`
-		Opcode      string `xml:"Opcode"`
-		Keywords    string `xml:"Keywords"`
 		TimeCreated struct {
 			Text       string `xml:",chardata"`
 			SystemTime string `xml:"SystemTime,attr"`
 		} `xml:"TimeCreated"`
 		EventRecordID string `xml:"EventRecordID"`
 		Correlation   string `xml:"Correlation"`
-		Execution     struct {
-			Text      string `xml:",chardata"`
-			ProcessID string `xml:"ProcessID,attr"`
-			ThreadID  string `xml:"ThreadID,attr"`
-		} `xml:"Execution"`
-		Channel  string `xml:"Channel"`
-		Computer string `xml:"Computer"`
-		Security struct {
+		Channel       string `xml:"Channel"`
+		Computer      string `xml:"Computer"`
+		Security      struct {
 			Text   string `xml:",chardata"`
 			UserID string `xml:"UserID,attr"`
 		} `xml:"Security"`
 	} `xml:"System"`
 	EventData struct {
-		Text string `xml:",chardata"`
 		Data []struct {
 			Text string `xml:",chardata"`
 			Name string `xml:"Name,attr"`
 		} `xml:"Data"`
 	} `xml:"EventData"`
+}
+
+type PlasoLog struct {
+	ContainerType string  `json:"__container_type__"`
+	Type          string  `json:"__type__"`
+	DataType      string  `json:"data_type"`
+	DisplayName   string  `json:"display_name"`
+	KeyPath       string  `json:"key_path"`
+	Message       string  `json:"message"`
+	Parser        string  `json:"parser"`
+	Path          string  `json:"path"`
+	Sha256Hash    string  `json:"sha256_hash"`
+	Timestamp     float64 `json:"timestamp"`
+	TimestampDesc string  `json:"timestamp_desc"`
+	Xml_string    string  `json:"xml_string"`
+	EvtxLog       *EvtxLog
 }
 
 func GetDataValue(evtx EvtxLog, name string) string {
@@ -81,8 +82,8 @@ func handleErr(err error) {
 	}
 }
 
-func ParseFile(path string) []PlasoObject {
-	var output []PlasoObject
+func ParseFile(path string) []PlasoLog {
+	var output []PlasoLog
 	file, _ := os.Open(path)
 	scanner := bufio.NewScanner(file)
 	i := 0
@@ -104,24 +105,15 @@ func ParseFile(path string) []PlasoObject {
 	return output
 }
 
-func ParseLine(data string) PlasoObject {
-	var output PlasoObject
-	var json_obj map[string]interface{}
-	json.Unmarshal([]byte(data), &json_obj)
+func ParseLine(data string) PlasoLog {
+	var output PlasoLog
+	json.Unmarshal([]byte(data), &output)
 
 	//fmt.Println(json_obj["timestamp"])
 
-	output = PlasoObject{json_obj["timestamp"].(float64),
-		json_obj["timestamp_desc"].(string),
-		json_obj["data_type"].(string),
-		json_obj["message"].(string),
-		json_obj["parser"].(string),
-		json_obj["display_name"].(string),
-		"", nil}
-
-	if strings.Compare(output.Parser, "winevtx") == 0 {
+	if output.Parser == "winevtx" {
 		//fmt.Println(json_obj["xml_string"])
-		output.EvtxLog = ParseEvtx(json_obj["xml_string"].(string))
+		output.EvtxLog = ParseEvtx(output.Xml_string)
 	}
 
 	return output
