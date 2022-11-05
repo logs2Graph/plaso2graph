@@ -33,7 +33,7 @@ type Process struct {
 	Evidence    []string
 }
 
-func contains(ps []Process, p Process) bool {
+func containsProcess(ps []Process, p Process) bool {
 	for _, v := range ps {
 		if v.PID == p.PID && v.PPID == p.PPID && v.Name == p.Name {
 			return true
@@ -105,18 +105,18 @@ func NewProcessFrom4688(evtx EvtxLog) Process {
 
 func NewProcessFromSysmon(evtx EvtxLog) Process {
 	var process Process
-
+	//TODO: Process From Sysmon 1
 	return process
 }
 
 func NewProcessFromPrefetch(pf PlasoLog) Process {
 	var process Process
-
+	//TODO: Process From Prefetch
 	return process
 }
 
 func NewProcessFromSRUM(EvtxLog) Process {
 	var process Process
-
+	//TODO: ProcessFromSRUM
 	return process
 }

@@ -4,8 +4,6 @@
 
 ```
 Usage of ./plaso2graph:
-  -extractor string
-    	Type of Extractor to use. (default: neo4j, maltego) (default "neo4j")
   -output string
     	Output Json File (default "output/output.json")
   -source string
@@ -14,14 +12,38 @@ Usage of ./plaso2graph:
 
 This tool takes as input the format "json_line" from plaso outputs and gives an extract to visualise the data in neo4j or maltego.
 
-## Exporter
+## Tech Choice
 
-All exporters will export Users, Computers, Process, FileAccess? and their interconnection.
+### Why Plaso ?
 
-## Todo
+We use Plaso as input because it parse a large collection of artefact and order them into a timeline, this provide us a standard and easier way to process artefacts and also make simpler the merge between artefacts.
 
-[] Add Maltego Exporter
-[] Add Neo4j Exporter
-[] Implement Multithreading
-[] Implement "l2tcsv" format parsing
+For example, a process execution may create an Evtx log, a prefetch and a SRUM artefact, the fact that __Plaso__ order the artefact by their timestamp make those artefacts close in the file and let us merge them without rereading the entire array.
 
+## Entity and Artifacts Supported
+
+This parts lists all Entities and associated artefacts extracted from Plaso, this is also a kind of Todo List.
+
+- Process:
+  - [x] Evtx EventID 4688
+  - [] Evtx Sysmon EventID 1
+  - [] Prefetch
+  - [] SRUM
+- User:
+  - [] Evtx EventID 4688
+  - [] Evtx EventID 4624
+  - [] Evtx Sysmon EventID 1
+  - [] Evtx EventID 4673 (Log User's Privileges)
+- Computer:
+  - [] Evtx
+- Connection:
+  - [] Evtx Sysmon EventID 3
+  - [] Evtx EventID 5031
+- Changes:
+  - AV Disabled
+  - FW Changes
+  - GPO Changes
+  - Group Changes
+  - User Changes
+    - [] EventID 4738 : "A user account was changed"
+  

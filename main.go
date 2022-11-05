@@ -45,6 +45,30 @@ func ValidateArgs() {
 	}
 }
 
+func containsString(strings []string, str string) bool {
+	for _, s := range strings {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}
+
+func enumEventData(data []PlasoLog) []string {
+	var res []string
+
+	for _, d := range data {
+		if d.EvtxLog != nil {
+			for _, dataName := range d.EvtxLog.EventData.Data {
+				if !containsString(res, dataName.Name) {
+					res = append(res, dataName.Name)
+				}
+			}
+		}
+	}
+	return res
+}
+
 func main() {
 	flag.Parse()
 	ValidateArgs()
@@ -55,9 +79,20 @@ func main() {
 	size := len(dat)
 	fmt.Printf("Line parsed : %d \n", size)
 
+	/**
+	names := enumEventData(dat)
+
+	fmt.Println(fmt.Sprint(names))
+	*/
+	t = time.Now()
 	processes := GetProcesses(dat)
+	users := GetUsers(dat)
+	elapsed = time.Since(t)
+	log.Printf("Aggregate Data in : %s \n", elapsed)
 
 	con := Neo4jConnect("admin", "admin", "bolt://localhost:7687")
 	InsertProcesses(con, processes)
+
+	InsertUsers(con, users)
 
 }

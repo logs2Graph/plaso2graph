@@ -91,3 +91,33 @@ func linkProcess(con Neo4JConnector) {
 	handleErr(err)
 
 }
+
+func InsertUsers(con Neo4JConnector, users []User) {
+	for _, u := range users {
+		InsertUser(con, u)
+	}
+	LinkUsers(con)
+}
+
+func InsertUser(con Neo4JConnector, u User) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		return PersistUser(tx, u)
+	})
+	handleErr(err)
+}
+
+func PersistUser(tx neo4j.Transaction, u User) (interface{}, error) {
+	query := "CREATE (:User {name: $name, sid: $sid, domain: $domain})"
+	parameters := map[string]interface{}{
+		"name":   u.Name,
+		"sid":    u.SID,
+		"domain": u.Domain,
+	}
+	_, err := tx.Run(query, parameters)
+	return nil, err
+}
+
+func LinkUsers(con Neo4JConnector) {
+	//TODO: Link User With Process
+}
