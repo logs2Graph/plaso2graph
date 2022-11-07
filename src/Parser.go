@@ -9,17 +9,6 @@ import (
 	"strings"
 )
 
-type PlasoLog2 struct {
-	Timestamp      float64
-	Timestamp_desc string
-	Source         string
-	Message        string
-	Parser         string
-	Display_name   string
-	xml_string     string
-	EvtxLog        *EvtxLog
-}
-
 type EvtxLog struct {
 	System struct {
 		Provider struct {
@@ -62,7 +51,19 @@ type PlasoLog struct {
 	Timestamp     float64 `json:"timestamp"`
 	TimestampDesc string  `json:"timestamp_desc"`
 	Xml_string    string  `json:"xml_string"`
-	EvtxLog       *EvtxLog
+
+	//Registry
+	ValueName string `json:"value_name"`
+
+	//UserAssist
+	NumberOfExecutions       int `json:"number_of_executions"`
+	ApplicationFocusCount    int `json:"application_focus_count"`
+	ApplicationFocusDuration int `json:"application_focus_duration"`
+
+	//ShellBags
+	ShellItemPath string `json:"shell_item_path"`
+
+	EvtxLog *EvtxLog
 }
 
 func GetDataValue(evtx EvtxLog, name string) string {

@@ -27,11 +27,12 @@ This parts lists all Entities and associated artefacts extracted from Plaso, thi
 - Process:
   - [x] Evtx EventID 4688
   - [] Evtx Sysmon EventID 1
-  - [] Prefetch
+  - [x] Prefetch
+  - [x] UserAssist
+  - [x] ShellBag
   - [] SRUM
 - User:
-  - [] Evtx EventID 4688
-  - [] Evtx EventID 4624
+  - [x] Evtx Security
   - [] Evtx Sysmon EventID 1
   - [] Evtx EventID 4673 (Log User's Privileges)
 - Computer:
@@ -39,6 +40,9 @@ This parts lists all Entities and associated artefacts extracted from Plaso, thi
 - Connection:
   - [] Evtx Sysmon EventID 3
   - [] Evtx EventID 5031
+- WebHistory
+  - [] Chrome
+  - [] Firefox
 - Changes:
   - AV Disabled
   - FW Changes

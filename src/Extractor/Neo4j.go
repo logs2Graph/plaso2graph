@@ -2,6 +2,7 @@ package Extractor
 
 import (
 	"context"
+	//"fmt"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"log"
 	. "plaso2graph/master/src/Entity"
@@ -51,20 +52,24 @@ func InsertProcess(con Neo4JConnector, p Process) {
 }
 
 func PersistProcess(tx neo4j.Transaction, p Process) (interface{}, error) {
-	query := "CREATE (:Process {created_time: $created_time, timestamp: $timestamp, name: $name, pid: $pid,commandline: $commandline, "
+	query := "CREATE (:Process {created_time: $created_time, timestamp: $timestamp, filename: $filename, fullpath: $fullpath,pid: $pid,commandline: $commandline, "
 	query += "ppid: $ppid, pprocess_name: $pprocess_name, pprocess_commandline: $pprocess_commandline, "
 	query += "user: $user, user_domain: $user_domain, computer: $computer, logonid: $logonid, evidence: $evidence})"
+	//fmt.Println("Created time:" + fmt.Sprint(p.CreatedTime))
+	//fmt.Println(fmt.Sprint(p.Evidence))
+
 	parameters := map[string]interface{}{
 		"created_time":         p.CreatedTime,
 		"timestamp":            p.Timestamp,
-		"name":                 p.Name,
+		"fullpath":             p.FullPath,
+		"filename":             p.Filename,
 		"pid":                  p.PID,
 		"commandline":          p.Commandline,
 		"ppid":                 p.PPID,
-		"pprocess_name":        p.Pprocess_name,
-		"pprocess_commandline": p.Pprocess_commandline,
+		"pprocess_name":        p.ParentProcessName,
+		"pprocess_commandline": p.ParentProcessCommandline,
 		"user":                 p.User,
-		"user_domain":          p.User_Domain,
+		"user_domain":          p.UserDomain,
 		"logonid":              p.LogonID,
 		"computer":             p.Computer,
 		"evidence":             p.Evidence,
@@ -79,7 +84,7 @@ func linkProcess(con Neo4JConnector) {
 	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		var param map[string]interface{}
-		return tx.Run("match (n) match (m) where n.ppid = m.pid and n.pprocess_name = m.name and n.timestamp > m.timestamp merge (m)-[:EXECUTE]->(n)", param)
+		return tx.Run("match (n) match (m) where n.pid <> 0 and m.pid <> 0 and n.ppid = m.pid and n.pprocess_name = m.fullpath and n.timestamp > m.timestamp merge (m)-[:EXECUTE]->(n)", param)
 	})
 	handleErr(err)
 

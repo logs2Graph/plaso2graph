@@ -21,7 +21,9 @@ func findUser(users []User, user User) int {
 }
 
 func mergeUser(dest User, src User) User {
-	//TODO: Merge User
+	if dest.SID == "Not Found." {
+		dest.SID = src.SID
+	}
 	return dest
 }
 
