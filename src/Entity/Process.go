@@ -3,20 +3,13 @@ package Entity
 import (
 	"encoding/xml"
 	//"fmt"
-	"log"
-	. "plaso2graph/master/src"
+	//"log"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
-
-func handleErr(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
 
 type Process struct {
 	CreatedTime time.Time
@@ -46,7 +39,7 @@ func containsProcess(ps []Process, p Process) bool {
 	return false
 }
 
-func addProcess(ps []Process, p Process) []Process {
+func AddProcess(ps []Process, p Process) []Process {
 	if p.Filename != "" {
 		ps = append(ps, p)
 	}
@@ -63,23 +56,23 @@ func GetProcesses(data []PlasoLog) []Process {
 		case "windows:volume:creation":
 			if d.Parser == "prefetch" {
 				process := NewProcessFromPrefetchFile(d)
-				processes = addProcess(processes, process)
+				processes = AddProcess(processes, process)
 			}
 			break
 		case "windows:registry:userassist":
 			process := NewProcessFromUserAssist(d)
-			processes = addProcess(processes, process)
+			processes = AddProcess(processes, process)
 			break
 		case "windows:shell_item:file_entry":
 			process := NewProcessFromShellBag(d)
-			processes = addProcess(processes, process)
+			processes = AddProcess(processes, process)
 			break
 		case "windows:evtx:record":
 			if d.EvtxLog.System.EventID == 4688 {
 				process := NewProcessFrom4688(*d.EvtxLog)
 				l := len(processes)
 				if !(l != 0 && process.PID == processes[l-1].PID && process.PPID == processes[l-1].PPID && process.FullPath == processes[l-1].FullPath) {
-					processes = addProcess(processes, process)
+					processes = AddProcess(processes, process)
 				}
 			}
 		}
@@ -111,11 +104,8 @@ func MergeLastProcesses(processes []Process, batch_size int, approx int) []Proce
 		var markedToRemove []int
 		for j := minIndex; j < len(processes); j++ {
 			// We merge process if they have the same Filename and have a timestamp approximatly close
-			if i != j && processes[i].Filename == processes[j].Filename && (processes[j].Timestamp-approx < processes[i].Timestamp || processes[i].Timestamp < processes[j].Timestamp+approx) {
+			if i != j && processes[i].Filename == processes[j].Filename && processes[j].Timestamp-approx < processes[i].Timestamp && processes[i].Timestamp < processes[j].Timestamp+approx {
 				processes[i] = mergeProcess(processes[i], processes[j])
-
-				//fmt.Printf("%d < %d < %d", processes[j].Timestamp-approx, processes[i].Timestamp, processes[j].Timestamp+approx)
-
 				// We mark the process that we have merged to be removed. (we don't mess with indexes in J's for loop)
 				markedToRemove = append(markedToRemove, j)
 			}

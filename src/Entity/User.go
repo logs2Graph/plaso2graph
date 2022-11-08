@@ -1,7 +1,6 @@
 package Entity
 
 import (
-	. "plaso2graph/master/src"
 	"strings"
 )
 
@@ -27,38 +26,13 @@ func mergeUser(dest User, src User) User {
 	return dest
 }
 
-func addUser(users []User, u *User) []User {
+func AddUser(users []User, u *User) []User {
 	if u != nil {
 		i := findUser(users, *u)
 		if i == -1 {
 			users = append(users, *u)
 		} else {
 			users[i] = mergeUser(users[i], *u)
-		}
-	}
-	return users
-}
-
-func GetUsers(data []PlasoLog) []User {
-	var users []User
-
-	for _, d := range data {
-		var u1, u2 *User
-		if d.EvtxLog != nil {
-
-			if strings.Contains(d.EvtxLog.System.Provider.Name, "Sysmon") {
-				switch d.EvtxLog.System.EventID {
-				case 1:
-					u1, u2 = newUsersFromSysmon1(*d.EvtxLog)
-					break
-				default:
-					u1, u2 = newUsersFromSysmonDefault(*d.EvtxLog)
-				}
-			} else {
-				u1, u2 = newUsersFromSecurity(*d.EvtxLog)
-			}
-			users = addUser(users, u1)
-			users = addUser(users, u2)
 		}
 	}
 	return users
@@ -95,12 +69,18 @@ func newUsersFromSecurity(evtx EvtxLog) (*User, *User) { //Best Effort
 	return u1, u2
 }
 
-func newUsersFromSysmon1(evtx EvtxLog) (*User, *User) {
-	//TODO: User From Sysmon 1
-	return nil, nil
-}
+func NewUserFromPath(path string) *User {
+	var u = new(User)
+	if strings.Contains(path, "Users") {
+		splitted := strings.Split(path, "\\")
+		if len(splitted) == 1 {
+			splitted = strings.Split(path, "/")
+		}
 
-func newUsersFromSysmonDefault(evtx EvtxLog) (*User, *User) { //Default
-	//TODO: User From Sysmon Default
-	return nil, nil
+		u.Name = splitted[0]
+
+	} else {
+		return nil // Not a user
+	}
+	return u
 }

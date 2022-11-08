@@ -1,28 +1,81 @@
 package Entity
 
 import (
-	. "plaso2graph/master/src"
+	"fmt"
+	"log"
+	"regexp"
+	"time"
 )
 
 type WebHistory struct {
-	LastTime       string
-	Timestamp      int
-	Url            string
-	Domain         string
-	Title          string
-	DownloadedFile string
-	User           string
-	Evidence       []string
+	LastTime   time.Time
+	Timestamp  int
+	Url        string
+	Domain     string
+	Path       string
+	Title      string
+	User       string
+	VisitCount int
+	Evidence   []string
 }
 
-func NewWebHistoryFromMozilla(pl PlasoLog) WebHistory {
+func AddWebHistory(whs []WebHistory, wh WebHistory) []WebHistory {
+	if wh.Url != "" {
+		whs = append(whs, wh)
+	}
+	return whs
+}
+
+func NewWebHistoryFromFirefox(pl PlasoLog) WebHistory {
 	var wh = *new(WebHistory)
+	wh.Url = pl.Url
+	wh.Title = pl.Title
+	wh.Domain = pl.Host
+
+	var utc, _ = time.LoadLocation("UTC")
+	wh.Timestamp = int(pl.Timestamp)
+	wh.LastTime = time.UnixMicro(int64(pl.Timestamp / 1000)).In(utc)
+
+	wh.VisitCount = pl.VisitCount
+
+	wh.Evidence = append(wh.Evidence, pl.Message)
+
+	u := NewUserFromPath(pl.Filename)
+	if u != nil {
+		wh.User = u.Name
+	}
 
 	return wh
 }
 
 func NewWebHistoryFromChrome(pl PlasoLog) WebHistory {
 	var wh = *new(WebHistory)
+
+	wh.Url = pl.Url
+	wh.Title = pl.Title
+
+	var utc, _ = time.LoadLocation("UTC")
+	wh.Timestamp = int(pl.Timestamp)
+	wh.LastTime = time.UnixMicro(int64(pl.Timestamp / 1000)).In(utc)
+
+	wh.VisitCount = int(pl.TypedCount)
+
+	wh.Evidence = append(wh.Evidence, pl.Message)
+
+	u := NewUserFromPath(pl.Filename)
+	if u != nil {
+		wh.User = u.Name
+	}
+
+	r, err := regexp.Compile("http(?:s|)://(?P<domain>[^/]+)(?P<path>.*)")
+	handleErr(err)
+	matches := r.FindStringSubmatch(pl.Url)
+	if len(matches) == 3 {
+		wh.Domain = matches[1]
+		wh.Path = matches[2]
+	} else {
+		log.Println("Error parsing Domain and Path from Url: ", pl.Url, ": ", fmt.Sprint(matches))
+	}
 
 	return wh
 }
