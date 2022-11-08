@@ -38,6 +38,13 @@ func AddUser(users []User, u *User) []User {
 	return users
 }
 
+func UnionUsers(dest []User, src []User) []User {
+	for _, u := range src {
+		dest = AddUser(dest, &u)
+	}
+	return dest
+}
+
 func newUsersFromSecurity(evtx EvtxLog) (*User, *User) { //Best Effort
 	//TODO: User From Security Default
 	var u1, u2 = new(User), new(User)

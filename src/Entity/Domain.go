@@ -22,6 +22,13 @@ func AddDomain(ds []Domain, d Domain) []Domain {
 	return ds
 }
 
+func UnionDomains(dest []Domain, src []Domain) []Domain {
+	for _, p := range src {
+		dest = AddDomain(dest, p)
+	}
+	return dest
+}
+
 func GetDomain(data []PlasoLog) []Domain {
 	var res []Domain
 

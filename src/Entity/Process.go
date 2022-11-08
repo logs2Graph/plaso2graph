@@ -2,7 +2,7 @@ package Entity
 
 import (
 	"encoding/xml"
-	//"fmt"
+	"fmt"
 	//"log"
 	"regexp"
 	"sort"
@@ -44,6 +44,13 @@ func AddProcess(ps []Process, p Process) []Process {
 		ps = append(ps, p)
 	}
 	return ps
+}
+
+func UnionProcesses(dest []Process, src []Process) []Process {
+	for _, p := range src {
+		dest = AddProcess(dest, p)
+	}
+	return dest
 }
 
 func GetProcesses(data []PlasoLog) []Process {
@@ -98,7 +105,7 @@ func MergeLastProcesses(processes []Process, batch_size int, approx int) []Proce
 		minIndex = maxIndex - 2*batch_size
 	}
 
-	//fmt.Printf("From %d to %d.\n", minIndex, maxIndex)
+	fmt.Printf("From %d to %d.\n", minIndex, maxIndex)
 
 	for i := minIndex; i < len(processes); i++ {
 		var markedToRemove []int
@@ -112,7 +119,6 @@ func MergeLastProcesses(processes []Process, batch_size int, approx int) []Proce
 		}
 
 		sort.Sort(sort.Reverse(sort.IntSlice(markedToRemove)))
-		//fmt.Println(fmt.Sprint(markedToRemove))
 		// Here we remove merged Process
 		for _, index := range markedToRemove {
 			processes = removeProcess(processes, index)

@@ -84,18 +84,11 @@ func main() {
 	t := time.Now()
 
 	// Parse Plaso File
-	dat := ParseFile(*source)
+	ps, users, computers, domains, tasks, webhistories := ParseFile(*source)
 	elapsed := time.Since(t)
-	log.Printf("Elapsed Time: %s", elapsed)
-	size := len(dat)
-	fmt.Printf("Line parsed : %d \n", size)
 
-	t = time.Now()
 	//Aggregate data from Plaso
-	ps, users, computers, domains, tasks, webhistories := ParseEntity(dat)
-
-	elapsed = time.Since(t)
-	log.Printf("Aggregate Data in : %s \n", elapsed)
+	log.Printf("Read and Aggregated Data in : %s \n", elapsed)
 
 	fmt.Printf("Process : %d\n", len(ps))
 	fmt.Printf("User : %d\n", len(users))

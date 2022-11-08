@@ -30,6 +30,13 @@ func AddScheduledTask(tasks []ScheduledTask, task ScheduledTask) []ScheduledTask
 	return tasks
 }
 
+func UnionScheduledTasks(dest []ScheduledTask, src []ScheduledTask) []ScheduledTask {
+	for _, p := range src {
+		dest = AddScheduledTask(dest, p)
+	}
+	return dest
+}
+
 // GetScheduledTask return a slice of ScheduledTask from a slice of PlasoLog
 func GetScheduledTasks(data []PlasoLog) []ScheduledTask {
 	var res []ScheduledTask

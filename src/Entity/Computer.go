@@ -23,6 +23,13 @@ func AddComputer(cs []Computer, c Computer) []Computer {
 	return cs
 }
 
+func UnionComputers(dest []Computer, src []Computer) []Computer {
+	for _, p := range src {
+		dest = AddComputer(dest, p)
+	}
+	return dest
+}
+
 func GetComputer(data []PlasoLog) []Computer {
 	var res []Computer
 

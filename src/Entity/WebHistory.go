@@ -26,6 +26,13 @@ func AddWebHistory(whs []WebHistory, wh WebHistory) []WebHistory {
 	return whs
 }
 
+func UnionWebHistories(dest []WebHistory, src []WebHistory) []WebHistory {
+	for _, wh := range src {
+		dest = AddWebHistory(dest, wh)
+	}
+	return dest
+}
+
 func NewWebHistoryFromFirefox(pl PlasoLog) WebHistory {
 	var wh = *new(WebHistory)
 	wh.Url = pl.Url
