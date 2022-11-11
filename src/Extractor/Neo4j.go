@@ -6,6 +6,7 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"log"
 	. "plaso2graph/master/src/Entity"
+	"sync"
 )
 
 func handleErr(err error) {
@@ -36,27 +37,182 @@ func Neo4jConnect(username string, password string, url string) Neo4JConnector {
 	return con
 }
 
-func Links(con Neo4JConnector) {
+func InitializeNeo4jExtractor(args map[string]interface{}) map[string]interface{} {
+	//fmt.Println("Initializing Neo4j Extractor")
+
+	if args["username"] == nil {
+		log.Fatal("Username is required")
+	}
+
+	if args["password"] == nil {
+		log.Fatal("Password is required")
+	}
+
+	if args["url"] == nil {
+		log.Fatal("Url is required")
+	}
+
+	args["connector"] = Neo4jConnect(args["username"].(string), args["password"].(string), args["url"].(string))
+
+	return args
+}
+
+func Neo4jExtract(data []interface{}, args map[string]interface{}) {
+
+	if args["verbose"] == nil {
+		args["verbose"] = false
+	}
+
+	con := args["connector"].(Neo4JConnector)
+
+	var wg sync.WaitGroup
+	for _, d := range data {
+		switch d.(type) {
+		case []Process:
+
+			InsertProcessesNeo4j(con, d.([]Process))
+			break
+
+		case []User:
+
+			InsertUsersNeo4j(con, d.([]User))
+			break
+
+		case []File:
+
+			InsertFilesNeo4j(con, d.([]File))
+
+			break
+
+		case []ScheduledTask:
+
+			InsertTasksNeo4j(con, d.([]ScheduledTask))
+
+			break
+
+		case []Computer:
+
+			InsertComputersNeo4j(con, d.([]Computer))
+
+			break
+
+		case []Domain:
+
+			InsertDomainsNeo4j(con, d.([]Domain))
+
+			break
+
+		case []WebHistory:
+
+			InsertWebHistoriesNeo4j(con, d.([]WebHistory))
+
+			break
+		}
+
+	}
+	wg.Wait()
+	if args["verbose"].(bool) {
+		log.Println("Neo4j Extractor finished")
+	}
+}
+
+func ParrallelNeo4jExtract(data []interface{}, args map[string]interface{}) {
+
+	if args["verbose"] == nil {
+		args["verbose"] = false
+	}
+
+	con := args["connector"].(Neo4JConnector)
+
+	var wg sync.WaitGroup
+	for _, d := range data {
+		switch d.(type) {
+		case []Process:
+			go func() {
+				wg.Add(1)
+				defer wg.Done()
+				InsertProcessesNeo4j(con, d.([]Process))
+			}()
+			break
+
+		case []User:
+			go func() {
+				wg.Add(1)
+				defer wg.Done()
+				InsertUsersNeo4j(con, d.([]User))
+			}()
+			break
+
+		case []File:
+			go func() {
+				wg.Add(1)
+				defer wg.Done()
+				InsertFilesNeo4j(con, d.([]File))
+			}()
+			break
+
+		case []ScheduledTask:
+			go func() {
+				wg.Add(1)
+				defer wg.Done()
+				InsertTasksNeo4j(con, d.([]ScheduledTask))
+			}()
+			break
+
+		case []Computer:
+			go func() {
+				wg.Add(1)
+				defer wg.Done()
+				InsertComputersNeo4j(con, d.([]Computer))
+			}()
+			break
+
+		case []Domain:
+			go func() {
+				wg.Add(1)
+				defer wg.Done()
+				InsertDomainsNeo4j(con, d.([]Domain))
+			}()
+			break
+
+		case []WebHistory:
+			go func() {
+				wg.Add(1)
+				defer wg.Done()
+				InsertWebHistoriesNeo4j(con, d.([]WebHistory))
+			}()
+			break
+		}
+
+	}
+	wg.Wait()
+	if args["verbose"].(bool) {
+		log.Println("Neo4j Extractor finished")
+	}
+}
+
+func Neo4jPostProcessing(args map[string]interface{}) {
+	con := args["connector"].(Neo4JConnector)
 	linkProcess(con)
 	linkUsers(con)
 	linkComputers(con)
 }
 
-func InsertProcesses(con Neo4JConnector, ps []Process) {
+func InsertProcessesNeo4j(con Neo4JConnector, ps []Process) {
 	for _, p := range ps {
-		InsertProcess(con, p)
+		InsertProcessNeo4j(con, p)
 	}
 }
 
-func InsertProcess(con Neo4JConnector, p Process) {
+func InsertProcessNeo4j(con Neo4JConnector, p Process) {
 	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		return PersistProcess(tx, p)
+		return persistProcess(tx, p)
 	})
 	handleErr(err)
 }
 
-func PersistProcess(tx neo4j.Transaction, p Process) (interface{}, error) {
+func persistProcess(tx neo4j.Transaction, p Process) (interface{}, error) {
 	query := "CREATE (:Process {created_time: $created_time, timestamp: $timestamp, filename: $filename, fullpath: $fullpath,pid: $pid,commandline: $commandline, "
 	query += "ppid: $ppid, pprocess_name: $pprocess_name, pprocess_commandline: $pprocess_commandline, "
 	query += "user: $user, user_domain: $user_domain, computer: $computer, logonid: $logonid, evidence: $evidence})"
@@ -83,21 +239,21 @@ func PersistProcess(tx neo4j.Transaction, p Process) (interface{}, error) {
 	return nil, err
 }
 
-func InsertUsers(con Neo4JConnector, users []User) {
+func InsertUsersNeo4j(con Neo4JConnector, users []User) {
 	for _, u := range users {
-		InsertUser(con, u)
+		InsertUserNeo4j(con, u)
 	}
 }
 
-func InsertUser(con Neo4JConnector, u User) {
+func InsertUserNeo4j(con Neo4JConnector, u User) {
 	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		return PersistUser(tx, u)
+		return persistUser(tx, u)
 	})
 	handleErr(err)
 }
 
-func PersistUser(tx neo4j.Transaction, u User) (interface{}, error) {
+func persistUser(tx neo4j.Transaction, u User) (interface{}, error) {
 	query := "CREATE (:User {name: $name, sid: $sid, domain: $domain})"
 	parameters := map[string]interface{}{
 		"name":   u.Name,
@@ -108,21 +264,21 @@ func PersistUser(tx neo4j.Transaction, u User) (interface{}, error) {
 	return nil, err
 }
 
-func InsertComputers(con Neo4JConnector, computers []Computer) {
+func InsertComputersNeo4j(con Neo4JConnector, computers []Computer) {
 	for _, c := range computers {
-		InsertComputer(con, c)
+		InsertComputerNeo4j(con, c)
 	}
 }
 
-func InsertComputer(con Neo4JConnector, c Computer) {
+func InsertComputerNeo4j(con Neo4JConnector, c Computer) {
 	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		return PersistComputer(tx, c)
+		return persistComputer(tx, c)
 	})
 	handleErr(err)
 }
 
-func PersistComputer(tx neo4j.Transaction, c Computer) (interface{}, error) {
+func persistComputer(tx neo4j.Transaction, c Computer) (interface{}, error) {
 	query := "CREATE (:Computer {name: $name, domain: $domain})"
 	parameters := map[string]interface{}{
 		"name":   c.Name,
@@ -132,21 +288,21 @@ func PersistComputer(tx neo4j.Transaction, c Computer) (interface{}, error) {
 	return nil, err
 }
 
-func InsertScheduledTasks(con Neo4JConnector, tasks []ScheduledTask) {
+func InsertTasksNeo4j(con Neo4JConnector, tasks []ScheduledTask) {
 	for _, t := range tasks {
-		InsertScheduledTask(con, t)
+		InsertTaskNeo4j(con, t)
 	}
 }
 
-func InsertScheduledTask(con Neo4JConnector, t ScheduledTask) {
+func InsertTaskNeo4j(con Neo4JConnector, t ScheduledTask) {
 	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		return PersistScheduledTask(tx, t)
+		return persistTask(tx, t)
 	})
 	handleErr(err)
 }
 
-func PersistScheduledTask(tx neo4j.Transaction, t ScheduledTask) (interface{}, error) {
+func persistTask(tx neo4j.Transaction, t ScheduledTask) (interface{}, error) {
 	query := "CREATE (:ScheduledTask {application: $application, user: $user, comment: $comment, trigger: $trigger})"
 	parameters := map[string]interface{}{
 		"application": t.Application,
@@ -158,24 +314,84 @@ func PersistScheduledTask(tx neo4j.Transaction, t ScheduledTask) (interface{}, e
 	return nil, err
 }
 
-func InsertDomains(con Neo4JConnector, domains []Domain) {
+func InsertDomainsNeo4j(con Neo4JConnector, domains []Domain) {
 	for _, d := range domains {
-		InsertDomain(con, d)
+		InsertDomainNeo4j(con, d)
 	}
 }
 
-func InsertDomain(con Neo4JConnector, d Domain) {
+func InsertDomainNeo4j(con Neo4JConnector, d Domain) {
 	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		return PersistDomain(tx, d)
+		return persistDomain(tx, d)
 	})
 	handleErr(err)
 }
 
-func PersistDomain(tx neo4j.Transaction, d Domain) (interface{}, error) {
+func persistDomain(tx neo4j.Transaction, d Domain) (interface{}, error) {
 	query := "CREATE (:Domain {name: $name})"
 	parameters := map[string]interface{}{
 		"name": d.Name,
+	}
+	_, err := tx.Run(query, parameters)
+	return nil, err
+}
+
+func InsertWebHistoriesNeo4j(con Neo4JConnector, history []WebHistory) {
+	for _, h := range history {
+		InsertWebHistoryNeo4j(con, h)
+	}
+}
+
+func InsertWebHistoryNeo4j(con Neo4JConnector, h WebHistory) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		return persistWebHistory(tx, h)
+	})
+	handleErr(err)
+}
+
+func persistWebHistory(tx neo4j.Transaction, h WebHistory) (interface{}, error) {
+	query := "CREATE (:WebHistory {url: $url, title: $title, visit_count: $visit_count, last_visit_time: $last_visit_time, timestamp: $timestamp, path: $path, evidence: $evidence, user: $user})"
+	parameters := map[string]interface{}{
+		"url":             h.Url,
+		"title":           h.Title,
+		"visit_count":     h.VisitCount,
+		"last_visit_time": h.LastTimeVisited,
+		"path":            h.Path,
+		"evidence":        h.Evidence,
+		"user":            h.User,
+		"timestamp":       h.Timestamp,
+	}
+	_, err := tx.Run(query, parameters)
+	return nil, err
+}
+
+func InsertFilesNeo4j(con Neo4JConnector, files []File) {
+	for _, f := range files {
+		InsertFileNeo4j(con, f)
+	}
+}
+
+func InsertFileNeo4j(con Neo4JConnector, f File) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		return persistFile(tx, f)
+	})
+	handleErr(err)
+}
+
+func persistFile(tx neo4j.Transaction, f File) (interface{}, error) {
+	query := "CREATE (:File {fullpath: $fullpath, filename: $filename, extension: $extension, is_allocated: $is_allocated, date: $date, timestamp: $timestamp, timestamp_desc: $timestamp_desc, evidence: $evidence, date: $date})"
+	parameters := map[string]interface{}{
+		"fullpath":       f.FullPath,
+		"filename":       f.Filename,
+		"extension":      f.Extension,
+		"is_allocated":   f.IsAllocated,
+		"date":           f.Date,
+		"timestamp":      f.Timestamp,
+		"timestamp_desc": f.TimestampDesc,
+		"evidence":       f.Evidence,
 	}
 	_, err := tx.Run(query, parameters)
 	return nil, err

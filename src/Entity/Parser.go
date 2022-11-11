@@ -1,15 +1,10 @@
 package Entity
 
 import (
-	"bufio"
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"log"
-	"os"
 	"strings"
-	"sync"
-	"time"
 )
 
 type EvtxLog struct {
@@ -79,6 +74,11 @@ type PlasoLog struct {
 	Host       string `json:"host"`
 	VisitCount int    `json:"visit_count"`
 
+	//MFT
+	PathHints     []string `json:"path_hints"`
+	IsAllocated   bool     `json:"is_allocated"`
+	AttributeType string   `json:"attribute_type"`
+
 	//Evtx
 	EvtxLog *EvtxLog
 }
@@ -100,63 +100,37 @@ func handleErr(err error) {
 	}
 }
 
-func ParseFile(path string) ([]Process, []User, []Computer, []Domain, []ScheduledTask, []WebHistory) {
-	var ps []Process
-	var users []User
-	var computers []Computer
-	var domains []Domain
-	var tasks []ScheduledTask
-	var webhistories []WebHistory
-	var lines []PlasoLog
-	// Batch size must be 200 for now, because smaller batch size will miss some duplicate entities (because of async nature of goroutines)
-	var batch_size = 10000
-
-	file, _ := os.Open(path)
-	scanner := bufio.NewScanner(file)
-
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 1024*1024)
-	var wg sync.WaitGroup
-	for scanner.Scan() {
-		line := ParseLine(scanner.Text())
-		lines = append(lines, line)
-		if len(lines) == batch_size {
-			wg.Wait()
-			go GoParseEntity(&wg, &ps, &users, &computers, &domains, &tasks, &webhistories, lines)
-			lines = *new([]PlasoLog)
-		}
-
-	}
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-
-	wg.Wait()
-	go GoParseEntity(&wg, &ps, &users, &computers, &domains, &tasks, &webhistories, lines)
-	lines = *new([]PlasoLog)
-
-	// There is race condition here, so we need to add some delay
-	time.Sleep(2 * time.Millisecond)
-	fmt.Println("Waiting for goroutines to finish Before Final Merge...")
-	wg.Wait()
-	fmt.Println("Warning: Merging Process, may take a while...")
-	ps = MergeLastProcesses(ps, len(ps), 1000)
-
-	return ps, users, computers, domains, tasks, webhistories
-}
-
-func GoParseEntity(wg *sync.WaitGroup, ps *[]Process, users *[]User, computers *[]Computer, domains *[]Domain, tasks *[]ScheduledTask, webhistories *[]WebHistory, lines []PlasoLog) {
-	wg.Add(1)
+func ParseEntities(data []interface{}, lines []PlasoLog) []interface{} {
 	for _, line := range lines {
-		t_ps, t_users, t_computers, t_domains, t_tasks, t_webhistories := ParseEntity(line)
-		*ps = UnionProcesses(*ps, t_ps)
-		*users = UnionUsers(*users, t_users)
-		*computers = UnionComputers(*computers, t_computers)
-		*domains = UnionDomains(*domains, t_domains)
-		*tasks = UnionScheduledTasks(*tasks, t_tasks)
-		*webhistories = UnionWebHistories(*webhistories, t_webhistories)
+		t_ps, t_users, t_computers, t_domains, t_tasks, t_webhistories, t_files := ParseEntity(line)
+		for i, _ := range data {
+			switch data[i].(type) {
+			case []Process:
+				data[i] = UnionProcesses(data[i].([]Process), t_ps)
+				break
+			case []User:
+				data[i] = UnionUsers(data[i].([]User), t_users)
+				break
+			case []Computer:
+				data[i] = UnionComputers(data[i].([]Computer), t_computers)
+				break
+			case []Domain:
+				data[i] = UnionDomains(data[i].([]Domain), t_domains)
+				break
+			case []ScheduledTask:
+				data[i] = UnionScheduledTasks(data[i].([]ScheduledTask), t_tasks)
+				break
+			case []WebHistory:
+				data[i] = UnionWebHistories(data[i].([]WebHistory), t_webhistories)
+				break
+			case []File:
+				data[i] = UnionFiles(data[i].([]File), t_files)
+				break
+
+			}
+		}
 	}
-	wg.Done()
+	return data
 }
 
 func ParseLine(data string) PlasoLog {
@@ -182,14 +156,14 @@ func ParseEvtx(data string) *EvtxLog {
 	return &evtxLog
 }
 
-func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []ScheduledTask, []WebHistory) {
+func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []ScheduledTask, []WebHistory, []File) {
 	var ps []Process
 	var users []User
 	var computers []Computer
 	var domains []Domain
 	var tasks []ScheduledTask
 	var webhistories []WebHistory
-
+	var files []File
 	switch pl.DataType {
 	case "windows:evtx:record":
 		if strings.Contains(pl.EvtxLog.System.Provider.Name, "Sysmon") {
@@ -259,40 +233,13 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 		wh := NewWebHistoryFromChrome(pl)
 		webhistories = AddWebHistory(webhistories, wh)
 		break
-	}
-
-	return ps, users, computers, domains, tasks, webhistories
-}
-
-// ParseEntity parses the entities from the given log array.
-func ParseEntities(pl []PlasoLog) ([]Process, []User, []Computer, []Domain, []ScheduledTask, []WebHistory) {
-	var ps []Process
-	var users []User
-	var computers []Computer
-	var domains []Domain
-	var tasks []ScheduledTask
-	var webhistories []WebHistory
-
-	var batch_size = 100
-
-	for _, p := range pl {
-
-		// Merge Processes with the same name and timestamp every batch_size times.
-		if len(ps)%batch_size == 0 && len(ps) != 0 {
-			ps = MergeLastProcesses(ps, batch_size, 100)
-		}
-
-		t_ps, t_users, t_computers, t_domains, t_tasks, t_webhistories := ParseEntity(p)
-		ps = UnionProcesses(ps, t_ps)
-		users = UnionUsers(users, t_users)
-		computers = UnionComputers(computers, t_computers)
-		domains = UnionDomains(domains, t_domains)
-		tasks = UnionScheduledTasks(tasks, t_tasks)
-		webhistories = UnionWebHistories(webhistories, t_webhistories)
+	case "fs:stat:ntfs":
+		//Extract File from MFT
+		file := NewFileFromMFT(pl)
+		files = AddFile(files, file)
+		break
 
 	}
 
-	ps = MergeLastProcesses(ps, batch_size, 1000)
-
-	return ps, users, computers, domains, tasks, webhistories
+	return ps, users, computers, domains, tasks, webhistories, files
 }

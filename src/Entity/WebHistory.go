@@ -8,15 +8,15 @@ import (
 )
 
 type WebHistory struct {
-	LastTime   time.Time
-	Timestamp  int
-	Url        string
-	Domain     string
-	Path       string
-	Title      string
-	User       string
-	VisitCount int
-	Evidence   []string
+	LastTimeVisited time.Time
+	Timestamp       int
+	Url             string
+	Domain          string
+	Path            string
+	Title           string
+	User            string
+	VisitCount      int
+	Evidence        []string
 }
 
 func AddWebHistory(whs []WebHistory, wh WebHistory) []WebHistory {
@@ -41,7 +41,7 @@ func NewWebHistoryFromFirefox(pl PlasoLog) WebHistory {
 
 	var utc, _ = time.LoadLocation("UTC")
 	wh.Timestamp = int(pl.Timestamp)
-	wh.LastTime = time.UnixMicro(int64(pl.Timestamp / 1000)).In(utc)
+	wh.LastTimeVisited = time.UnixMicro(int64(pl.Timestamp / 1000)).In(utc)
 
 	wh.VisitCount = pl.VisitCount
 
@@ -63,7 +63,7 @@ func NewWebHistoryFromChrome(pl PlasoLog) WebHistory {
 
 	var utc, _ = time.LoadLocation("UTC")
 	wh.Timestamp = int(pl.Timestamp)
-	wh.LastTime = time.UnixMicro(int64(pl.Timestamp / 1000)).In(utc)
+	wh.LastTimeVisited = time.UnixMicro(int64(pl.Timestamp / 1000)).In(utc)
 
 	wh.VisitCount = int(pl.TypedCount)
 

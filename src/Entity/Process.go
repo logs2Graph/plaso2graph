@@ -2,7 +2,7 @@ package Entity
 
 import (
 	"encoding/xml"
-	"fmt"
+	//"fmt"
 	//"log"
 	"regexp"
 	"sort"
@@ -53,63 +53,17 @@ func UnionProcesses(dest []Process, src []Process) []Process {
 	return dest
 }
 
-func GetProcesses(data []PlasoLog) []Process {
-
-	var processes []Process
-	batch_size := 100
-
-	for _, d := range data {
-		switch d.DataType {
-		case "windows:volume:creation":
-			if d.Parser == "prefetch" {
-				process := NewProcessFromPrefetchFile(d)
-				processes = AddProcess(processes, process)
-			}
-			break
-		case "windows:registry:userassist":
-			process := NewProcessFromUserAssist(d)
-			processes = AddProcess(processes, process)
-			break
-		case "windows:shell_item:file_entry":
-			process := NewProcessFromShellBag(d)
-			processes = AddProcess(processes, process)
-			break
-		case "windows:evtx:record":
-			if d.EvtxLog.System.EventID == 4688 {
-				process := NewProcessFrom4688(*d.EvtxLog)
-				l := len(processes)
-				if !(l != 0 && process.PID == processes[l-1].PID && process.PPID == processes[l-1].PPID && process.FullPath == processes[l-1].FullPath) {
-					processes = AddProcess(processes, process)
-				}
-			}
-		}
-
-		if len(processes)%batch_size == 0 && len(processes) != 0 {
-			processes = MergeLastProcesses(processes, batch_size, 1000)
-		}
-
-	}
-	return processes
-}
-
 func removeProcess(array []Process, index int) []Process {
 	array[index] = array[len(array)-1]
 	return array[:len(array)-1]
 }
 
 // Merge Last 2 * batch_size process
-func MergeLastProcesses(processes []Process, batch_size int, approx int) []Process {
-	maxIndex := len(processes)
-	minIndex := 0
-	if maxIndex >= 2*batch_size {
-		minIndex = maxIndex - 2*batch_size
-	}
+func MergeProcesses(processes []Process, approx int) []Process {
 
-	fmt.Printf("From %d to %d.\n", minIndex, maxIndex)
-
-	for i := minIndex; i < len(processes); i++ {
+	for i := 0; i < len(processes); i++ {
 		var markedToRemove []int
-		for j := minIndex; j < len(processes); j++ {
+		for j := 0; j < len(processes); j++ {
 			// We merge process if they have the same Filename and have a timestamp approximatly close
 			if i != j && processes[i].Filename == processes[j].Filename && processes[j].Timestamp-approx < processes[i].Timestamp && processes[i].Timestamp < processes[j].Timestamp+approx {
 				processes[i] = mergeProcess(processes[i], processes[j])
