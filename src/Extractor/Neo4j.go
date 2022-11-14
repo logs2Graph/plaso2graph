@@ -69,43 +69,39 @@ func Neo4jExtract(data []interface{}, args map[string]interface{}) {
 	for _, d := range data {
 		switch d.(type) {
 		case []Process:
-
 			InsertProcessesNeo4j(con, d.([]Process))
 			break
 
 		case []User:
-
 			InsertUsersNeo4j(con, d.([]User))
 			break
 
 		case []File:
-
 			InsertFilesNeo4j(con, d.([]File))
-
 			break
 
 		case []ScheduledTask:
-
 			InsertTasksNeo4j(con, d.([]ScheduledTask))
-
 			break
 
 		case []Computer:
-
 			InsertComputersNeo4j(con, d.([]Computer))
-
 			break
 
 		case []Domain:
-
 			InsertDomainsNeo4j(con, d.([]Domain))
-
 			break
 
 		case []WebHistory:
-
 			InsertWebHistoriesNeo4j(con, d.([]WebHistory))
+			break
 
+		case []Connection:
+			InsertConnectionsNeo4j(con, d.([]Connection))
+			break
+
+		case []Event:
+			InsertEventsNeo4j(con, d.([]Event))
 			break
 		}
 
@@ -196,6 +192,8 @@ func Neo4jPostProcessing(args map[string]interface{}) {
 	linkProcess(con)
 	linkUsers(con)
 	linkComputers(con)
+	handleConnections(con)
+	handleEvents(con)
 }
 
 func InsertProcessesNeo4j(con Neo4JConnector, ps []Process) {
@@ -397,6 +395,80 @@ func persistFile(tx neo4j.Transaction, f File) (interface{}, error) {
 	return nil, err
 }
 
+func InsertConnectionsNeo4j(con Neo4JConnector, connections []Connection) {
+	for _, c := range connections {
+		InsertConnectionNeo4j(con, c)
+	}
+}
+
+func InsertConnectionNeo4j(con Neo4JConnector, c Connection) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		return persistConnection(tx, c)
+	})
+	handleErr(err)
+}
+
+func persistConnection(tx neo4j.Transaction, c Connection) (interface{}, error) {
+	query := "CREATE (:Connection {timestamp: $timestamp, date:$date, protocol: $protocol, ip_source: $ip_source, ip_destination: $ip_destination, port_source: $port_source, port_destination: $port_destination, user: $user, user_domain: $user_domain, computer: $computer, process: $process, process_id: $process_id})"
+	parameters := map[string]interface{}{
+		"timestamp":        c.Timestamp,
+		"date":             c.Date,
+		"protocol":         c.Protocol,
+		"ip_source":        c.SourceIP,
+		"ip_destination":   c.DestinationIP,
+		"port_source":      c.SourcePort,
+		"port_destination": c.DestinationPort,
+		"user":             c.User,
+		"user_domain":      c.UserDomain,
+		"computer":         c.Computer,
+		"process":          c.ProcessName,
+		"process_id":       c.ProcessId,
+	}
+	_, err := tx.Run(query, parameters)
+	return nil, err
+}
+
+func InsertEventsNeo4j(con Neo4JConnector, events []Event) {
+	for _, e := range events {
+		InsertEventNeo4j(con, e)
+	}
+}
+
+func InsertEventNeo4j(con Neo4JConnector, e Event) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		return persistEvent(tx, e)
+	})
+	handleErr(err)
+}
+
+func persistEvent(tx neo4j.Transaction, e Event) (interface{}, error) {
+	query := `CREATE (:Event {timestamp: $timestamp, date: $date, event_type: $event_type, title: $title,
+		user_source: $user_source, user_destination: $user_destination, domain_source: $domain_source,
+		domain_destination: $domain_destination, process: $process, process_id: $process_id, fullpath: $fullpath, filename: $filename,
+		extension: $extension})`
+	parameters := map[string]interface{}{
+		"timestamp":          e.Timestamp,
+		"date":               e.Date,
+		"title":              e.Title,
+		"event_type":         e.Type,
+		"user_source":        e.UserSource,
+		"user_destination":   e.UserDestination,
+		"domain_source":      e.UserDomainSource,
+		"domain_destination": e.UserDestinationDomain,
+		"process":            e.Process,
+		"process_id":         e.ProcessId,
+		"fullpath":           e.FullPath,
+		"filename":           e.Filename,
+		"extension":          e.Extension,
+	}
+	_, err := tx.Run(query, parameters)
+	return nil, err
+}
+
 func linkProcess(con Neo4JConnector) {
 
 	//create link based on pid, ppid and name. Quick Filter to avoid some duplicates
@@ -433,4 +505,66 @@ func linkComputers(con Neo4JConnector) {
 		return tx.Run("match (c:Computer) match (p) where c.name = p.computer merge (c)-[:ON]->(p)", param)
 	})
 	handleErr(err)
+}
+
+func handleConnections(con Neo4JConnector) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	//Create Hosts Nodes based on Connection's IP destination
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := "match (n:Connection) with collect(distinct n.ip_destination) as ip_dests FOREACH (ip IN ip_dests | Create (:Host {domain: \"\", ip:ip}))"
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+
+	// Convert Connection nodes to relationships between Hosts and Processes
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (n:Connection) with collect(n) as connections
+		UNWIND connections as c
+		match (p:Process) where p.fullpath = c.process and p.pid = c.process_id and p.timestamp < c.timestamp
+		match (h:Host) where h.ip = c.ip_destination 
+		merge (p)-[r:CONNECT{port_source:c.port_source,port_destination:c.port_destination, ip_source:c.ip_source, timestamp:c.timestamp, date:c.date}]->(h)`
+
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+
+}
+
+func handleEvents(con Neo4JConnector) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	// Create File Based On Events "CreateFile" and "DeleteFile"
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "File Created" with collect(e) as events
+		UNWIND events as event
+		create (:File {fullpath: event.fullpath, filename: event.filename, extension:event.extension, 
+		timestamp:event.timestamp, date:event.date, timestamp_desc:"Creation Time"})
+		with event
+		match (f:File) match (p:Process) where f.fullpath = event.fullpath and p.fullpath = event.process and p.pid = event.process_id
+		merge (p)-[:CREATE]->(f)`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "File Deleted" with collect(e) as events
+		UNWIND events as event
+		create (:File {fullpath: event.fullpath, filename: event.filename, extension:event.extension, 
+		timestamp:event.timestamp, date:event.date, timestamp_desc:"Deletion Time"})
+		with event
+		match (f:File) match (p:Process) where f.fullpath = event.fullpath and p.fullpath = event.process and p.pid = event.process_id
+		merge (p)-[:Delete]->(f)`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+
 }

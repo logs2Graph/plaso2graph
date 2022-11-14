@@ -1,6 +1,7 @@
 package Entity
 
 import (
+	"encoding/xml"
 	"strings"
 	"time"
 )
@@ -45,11 +46,49 @@ func NewFileFromMFT(pl PlasoLog) File {
 
 	var utc, _ = time.LoadLocation("UTC")
 	f.Timestamp = int(pl.Timestamp)
-	f.Date = time.UnixMicro(int64(pl.Timestamp / 1000)).In(utc)
+	f.Date = time.UnixMicro(int64(pl.Timestamp / 1000000)).In(utc)
 
 	f.TimestampDesc = pl.TimestampDesc
 	f.Evidence = append(f.Evidence, pl.Message)
 	f.IsAllocated = pl.IsAllocated
+
+	return f
+}
+
+func NewFileFromSysmon11(evtx EvtxLog) File {
+	var f = *new(File)
+	f.FullPath = GetDataValue(evtx, "TargetFilename")
+	f.Filename = getFilename(f.FullPath)
+	f.Extension = getExtension(f.Filename)
+
+	t, err := time.Parse(time.RFC3339Nano, evtx.System.TimeCreated.SystemTime)
+	handleErr(err)
+	f.Date = t
+	f.Timestamp = int(t.UnixNano())
+
+	xml_string, err := xml.Marshal(evtx)
+	handleErr(err)
+	f.TimestampDesc = "Creation Time"
+	f.Evidence = append(f.Evidence, string(xml_string))
+
+	return f
+}
+
+func NewFileFromSysmon23(evtx EvtxLog) File {
+	var f = *new(File)
+	f.FullPath = GetDataValue(evtx, "TargetFilename")
+	f.Filename = getFilename(f.FullPath)
+	f.Extension = getExtension(f.Filename)
+
+	t, err := time.Parse(time.RFC3339Nano, evtx.System.TimeCreated.SystemTime)
+	handleErr(err)
+	f.Date = t
+	f.Timestamp = int(t.UnixNano())
+
+	xml_string, err := xml.Marshal(evtx)
+	handleErr(err)
+	f.TimestampDesc = "Deletion Time"
+	f.Evidence = append(f.Evidence, string(xml_string))
 
 	return f
 }

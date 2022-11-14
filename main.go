@@ -221,9 +221,7 @@ func MergeEntities(data []interface{}) []interface{} {
 	for i, v := range data {
 		switch v.(type) {
 		case []Process:
-			fmt.Println("len: ", len(v.([]Process)))
 			data[i] = MergeProcesses(data[i].([]Process), 100)
-			fmt.Println("len: ", len(v.([]Process)))
 			break
 		}
 	}
@@ -245,6 +243,8 @@ func ProcessFile(path string, args map[string]interface{}) {
 		*new([]ScheduledTask),
 		*new([]Domain),
 		*new([]WebHistory),
+		*new([]Connection),
+		*new([]Event),
 	}
 
 	var batch_size = 100000
@@ -254,8 +254,8 @@ func ProcessFile(path string, args map[string]interface{}) {
 	file, _ := os.Open(path)
 	scanner := bufio.NewScanner(file)
 
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 1024*1024)
+	buf := make([]byte, 0, 128*1024)
+	scanner.Buffer(buf, 2048*1024)
 	var wg sync.WaitGroup
 	for scanner.Scan() {
 		line := ParseLine(scanner.Text())

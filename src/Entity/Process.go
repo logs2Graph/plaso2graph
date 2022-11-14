@@ -23,11 +23,14 @@ type Process struct {
 	ParentProcessName        string
 	ParentProcessCommandline string
 
-	User       string
-	UserDomain string
-	LogonID    int
-	Computer   string
-	Evidence   []string
+	User             string
+	UserDomain       string
+	ParentUser       string
+	ParentUserDomain string
+	LogonID          int
+	Computer         string
+	Sha256Hash       string
+	Evidence         []string
 }
 
 func containsProcess(ps []Process, p Process) bool {
@@ -156,15 +159,57 @@ func NewProcessFrom4688(evtx EvtxLog) Process {
 	return process
 }
 
-func NewProcessFromSysmon(evtx EvtxLog) Process {
+func NewProcessFromSysmon1(evtx EvtxLog) Process {
 	var process Process
-	//TODO: Process From Sysmon 1
-	return process
-}
+	process.Computer = evtx.System.Computer
+	t, err := time.Parse(time.RFC3339Nano, evtx.System.TimeCreated.SystemTime)
+	handleErr(err)
+	process.CreatedTime = t
+	process.Timestamp = int(t.UnixNano())
 
-func getFilename(full_path string) string {
-	splitted_string := strings.Split(full_path, "\\")
-	return splitted_string[len(splitted_string)-1]
+	process.FullPath = GetDataValue(evtx, "Image")
+	splitted_path := strings.Split(process.FullPath, "\\")
+	process.Filename = splitted_path[len(splitted_path)-1]
+	process.Commandline = GetDataValue(evtx, "CommandLine")
+	process.PID = convertOct(GetDataValue(evtx, "ProcessId"))
+
+	//Parse Hash
+	tmp := GetDataValue(evtx, "Hashes")
+	hashes := strings.Split(tmp, ",")
+	for _, hash := range hashes {
+		if strings.Contains(hash, "SHA256") {
+			process.Sha256Hash = strings.Split(hash, "=")[1]
+		}
+	}
+
+	process.PPID = convertOct(GetDataValue(evtx, "ParentProcessId"))
+	process.ParentProcessName = GetDataValue(evtx, "ParentImage")
+	process.ParentProcessCommandline = GetDataValue(evtx, "ParentCommandLine")
+
+	//Parse Domain and Users
+	tmp = GetDataValue(evtx, "ParentUser")
+	splitted_user := strings.Split(tmp, "\\")
+	if len(splitted_user) > 1 {
+		process.ParentUser = splitted_user[1]
+		process.ParentUserDomain = splitted_user[0]
+	} else {
+		process.User = tmp
+	}
+
+	tmp = GetDataValue(evtx, "User")
+	splitted_user = strings.Split(tmp, "\\")
+	if len(splitted_user) > 1 {
+		process.User = splitted_user[1]
+		process.UserDomain = splitted_user[0]
+	} else {
+		process.User = tmp
+	}
+
+	xml_string, err := xml.Marshal(evtx)
+	handleErr(err)
+	process.Evidence = append(process.Evidence, string(xml_string))
+
+	return process
 }
 
 func NewProcessFromPrefetchFile(pf PlasoLog) Process {
@@ -177,7 +222,7 @@ func NewProcessFromPrefetchFile(pf PlasoLog) Process {
 
 	var utc, _ = time.LoadLocation("UTC")
 	process.Timestamp = int(pf.Timestamp)
-	process.CreatedTime = time.UnixMicro(int64(pf.Timestamp / 1000)).In(utc)
+	process.CreatedTime = time.UnixMicro(int64(pf.Timestamp)).In(utc)
 	// {"__container_type__": "event", "__type__": "AttributeContainer", "data_type": "windows:volume:creation", "date_time": {"__class_name__": "Filetime", "__type__": "DateTimeValues", "timestamp": 132902282486494590}, "device_path": "\\VOLUME{01d829ebf972357e-10f97ebe}", "display_name": "OS:/home/csoulet/Desktop/Workspace/projects/Plaso_test/C/Windows/prefetch/CHROME.EXE-AED7BA3D.pf", "filename": "/home/csoulet/Desktop/Workspace/projects/Plaso_test/C/Windows/prefetch/CHROME.EXE-AED7BA3D.pf", "inode": "-", "message": "\\VOLUME{01d829ebf972357e-10f97ebe} Serial number: 0x10F97EBE Origin: CHROME.EXE-AED7BA3D.pf", "origin": "CHROME.EXE-AED7BA3D.pf", "parser": "prefetch", "pathspec": {"__type__": "PathSpec", "location": "/home/csoulet/Desktop/Workspace/projects/Plaso_test/C/Windows/prefetch/CHROME.EXE-AED7BA3D.pf", "type_indicator": "OS"}, "serial_number": 284786366, "sha256_hash": "1ac73a0134a784d92b04eb054bf1d4e950c1270d223606a94857332d0d136645", "timestamp": 1645754648649459, "timestamp_desc": "Creation Time"}
 	return process
 }
@@ -189,7 +234,7 @@ func NewProcessFromUserAssist(pl PlasoLog) Process {
 	// Assign Time and Timestamp
 	var utc, _ = time.LoadLocation("UTC")
 	process.Timestamp = int(pl.Timestamp)
-	process.CreatedTime = time.UnixMicro(int64(pl.Timestamp / 1000)).In(utc)
+	process.CreatedTime = time.UnixMicro(int64(pl.Timestamp)).In(utc)
 
 	// Add Evidence
 	process.Evidence = append(process.Evidence, pl.Message)
@@ -213,7 +258,7 @@ func NewProcessFromShellBag(pl PlasoLog) Process {
 	// Assign Time and Timestamp
 	var utc, _ = time.LoadLocation("UTC")
 	process.Timestamp = int(pl.Timestamp)
-	process.CreatedTime = time.UnixMicro(int64(pl.Timestamp / 1000)).In(utc)
+	process.CreatedTime = time.UnixMicro(int64(pl.Timestamp)).In(utc)
 
 	// Add Evidence
 	process.Evidence = append(process.Evidence, pl.Message)

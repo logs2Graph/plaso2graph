@@ -3,6 +3,7 @@ package Entity
 import (
 	"encoding/json"
 	"encoding/xml"
+	//"fmt"
 	"log"
 	"strings"
 )
@@ -94,15 +95,9 @@ func GetDataValue(evtx EvtxLog, name string) string {
 	return "Not Found."
 }
 
-func handleErr(err error) {
-	if err != nil {
-		log.Println(err)
-	}
-}
-
 func ParseEntities(data []interface{}, lines []PlasoLog) []interface{} {
 	for _, line := range lines {
-		t_ps, t_users, t_computers, t_domains, t_tasks, t_webhistories, t_files := ParseEntity(line)
+		t_ps, t_users, t_computers, t_domains, t_tasks, t_webhistories, t_files, t_connections, t_events := ParseEntity(line)
 		for i, _ := range data {
 			switch data[i].(type) {
 			case []Process:
@@ -126,7 +121,12 @@ func ParseEntities(data []interface{}, lines []PlasoLog) []interface{} {
 			case []File:
 				data[i] = UnionFiles(data[i].([]File), t_files)
 				break
-
+			case []Connection:
+				data[i] = UnionConnections(data[i].([]Connection), t_connections)
+				break
+			case []Event:
+				data[i] = UnionEvents(data[i].([]Event), t_events)
+				break
 			}
 		}
 	}
@@ -156,7 +156,7 @@ func ParseEvtx(data string) *EvtxLog {
 	return &evtxLog
 }
 
-func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []ScheduledTask, []WebHistory, []File) {
+func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []ScheduledTask, []WebHistory, []File, []Connection, []Event) {
 	var ps []Process
 	var users []User
 	var computers []Computer
@@ -164,10 +164,24 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 	var tasks []ScheduledTask
 	var webhistories []WebHistory
 	var files []File
+	var connections []Connection
+	var events []Event
+
 	switch pl.DataType {
 	case "windows:evtx:record":
 		if strings.Contains(pl.EvtxLog.System.Provider.Name, "Sysmon") {
-			//TODO: Sysmon
+			switch pl.EvtxLog.System.EventID {
+			case 1:
+				ps = AddProcess(ps, NewProcessFromSysmon1(*pl.EvtxLog))
+				break
+			case 3:
+				connections = AddConnection(connections, NewConnectionFromSysmon3(*pl.EvtxLog))
+				break
+			default:
+				event := NewEventFromSysmon(*pl.EvtxLog)
+				events = AddEvent(events, event)
+			}
+
 		} else {
 
 			// Extract Users from Event Logs
@@ -194,9 +208,78 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 				process := NewProcessFrom4688(*pl.EvtxLog)
 				ps = AddProcess(ps, process)
 				break
+			case 4699:
+				log.Fatal("4699: ", pl.Xml_string)
+				break
+			case 4700:
+				log.Fatal("4700: ", pl.Xml_string)
+				break
+			case 4701:
+				log.Fatal("4701: ", pl.Xml_string)
+				break
+			case 4702:
+				log.Fatal("4702: ", pl.Xml_string)
+				break
+			case 4704:
+				log.Fatal("4704: ", pl.Xml_string)
+				break
+			case 4705:
+				log.Fatal("4705: ", pl.Xml_string)
+				break
+			case 4720:
+				log.Fatal("4720: ", pl.Xml_string)
+				break
+			case 4722:
+				log.Fatal("4722: ", pl.Xml_string)
+				break
+			case 4723:
+				log.Fatal("4723: ", pl.Xml_string)
+				break
+			case 4724:
+				log.Fatal("4724: ", pl.Xml_string)
+				break
+			case 4725:
+				log.Fatal("4725: ", pl.Xml_string)
+				break
+			case 4726:
+				log.Fatal("4726: ", pl.Xml_string)
+				break
+			case 4728:
+				log.Fatal("4728: ", pl.Xml_string)
+				break
+			case 4729:
+				log.Fatal("4729: ", pl.Xml_string)
+				break
+			case 4730:
+				log.Fatal("4730: ", pl.Xml_string)
+				break
+			case 4731:
+				log.Fatal("4731: ", pl.Xml_string)
+				break
+			case 4732:
+				log.Fatal("4732: ", pl.Xml_string)
+				break
+			case 4733:
+				log.Fatal("4733: ", pl.Xml_string)
+				break
+			case 4734:
+				log.Fatal("4734: ", pl.Xml_string)
+				break
+			case 4735:
+				log.Fatal("4735: ", pl.Xml_string)
+				break
+			case 4737:
+				log.Fatal("4737: ", pl.Xml_string)
+				break
+			case 4738:
+				log.Fatal("4738: ", pl.Xml_string)
+				break
+			default:
+				e := NewEventFromEvtx(*pl.EvtxLog)
+				events = AddEvent(events, e)
+
 			}
 		}
-		break
 	case "windows:volume:creation":
 
 		// Extract Process from Prefetch
@@ -241,5 +324,5 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 
 	}
 
-	return ps, users, computers, domains, tasks, webhistories, files
+	return ps, users, computers, domains, tasks, webhistories, files, connections, events
 }

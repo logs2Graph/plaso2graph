@@ -1,6 +1,7 @@
 package Entity
 
 import (
+	//"fmt"
 	"strings"
 )
 
@@ -83,8 +84,8 @@ func NewUserFromPath(path string) *User {
 		if len(splitted) == 1 {
 			splitted = strings.Split(path, "/")
 		}
-
-		u.Name = splitted[0]
+		//fmt.Println(splitted)
+		u.Name = splitted[2]
 
 	} else {
 		return nil // Not a user

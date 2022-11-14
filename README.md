@@ -26,77 +26,77 @@ This parts lists all Entities and associated artefacts extracted from Plaso.
 
 - Process:
   - [x] Evtx EventID 4688
-  - [] Evtx Sysmon EventID 1
+  - [x] Evtx Sysmon EventID 1
   - [x] Prefetch
   - [x] UserAssist
   - [x] ShellBag
-  - [] SRUM
-  - [] MRU
-  - [] Evtx Sysmon EventID 10 (memory access)
-  - [] Evtx Sysmon EventID 7 (Image Loaded)
-  - [] Evtx Sysmon EventID 9 (Raw Access Read)
+  - [ ] SRUM
+  - [ ] MRU
+  - [ ] Evtx Sysmon EventID 10 (memory access)
+  - [ ] Evtx Sysmon EventID 7 (Image Loaded)
+  - [ ] Evtx Sysmon EventID 9 (Raw Access Read)
 - User:
   - [x] Evtx Security
-  - [] Evtx Sysmon EventID 1
-  - [] Evtx EventID 4673 (Log User's Privileges)
+  - [x] Evtx Sysmon
+  - [ ] Evtx EventID 4673 (Log User's Privileges)
 - Groups:
-  - [] Evtx EventID 4627 (Group Membership)
+  - [ ] Evtx EventID 4627 (Group Membership)
 - Login Events:
-  - [] Evtx EventID 4648 (Explicit Credentials)
-  - [] Evtx EventID 4649 (Replay Attack Detected)
-  - [] Evtx EventID 4624 (User Logon)
-  - [] Evtx EventID 4625 (User Fail to Logon)
-  - [] Evtx EventID 4634 (User Logoff)
+  - [x] Evtx EventID 4648 (Explicit Credentials)
+  - [ ] Evtx EventID 4649 (Replay Attack Detected)
+  - [x] Evtx EventID 4624 (User Logon)
+  - [x] Evtx EventID 4625 (User Fail to Logon)
+  - [x] Evtx EventID 4634 (User Logoff)
 - Computer:
-  - [] Evtx
+  - [x] Evtx
 - Connection:
-  - [] Evtx Sysmon EventID 3
-  - [] Evtx EventID 5031
+  - [x] Evtx Sysmon EventID 3
+  - [ ] Evtx EventID 5031
 - WebHistory
   - [x] Chrome
   - [x] Firefox
 - AutoRun:
   - Scheduled Tasks
     - [x] Windows Jobs
-    - [] Evtx EventID 4699-4702
-  - [] Registry Run / RunOnce
-  - [] Boot Execution
-  - [] Service
+    - [ ] Evtx EventID 4699-4702
+  - [ ] Registry Run / RunOnce
+  - [ ] Boot Execution
+  - [ ] Service
 - File:
-  - [] Evtx Sysmon Event ID 9 (Raw Access Read)
-  - [] Evtx Sysmon Event ID 11 (File Create)
-  - [] Evtx Sysmon Event ID 23 (File Delete)
+  - [ ] Evtx Sysmon Event ID 9 (Raw Access Read)
+  - [ ] Evtx Sysmon Event ID 11 (File Create)
+  - [ ] Evtx Sysmon Event ID 23 (File Delete)
   - [x] MFT (Note: Works but will take a long time.)
 - Misc Events:
-  - [] USB
+  - [ ] USB
 - Changes:
   - AV Disabled
   - FW Changes
   - GPO Changes
   - Group Changes
   - User Changes
-    - [] EventID 4738 (A user account was changed)
-    - [] EventID 4720 (User Created)
-    - [] EventID 4722 (User Enabled)
-    - [] EventID 4723-4724 (Password reset or changed)
-    - [] EventID 4725 (User Disabled)
-    - [] EventID 4726 (User Deleted)
-    - [] EventID 4704 (User right assigned)
-    - [] EventID 4705 (User right removed)
+    - [ ] EventID 4738 (A user account was changed)
+    - [ ] EventID 4720 (User Created)
+    - [ ] EventID 4722 (User Enabled)
+    - [ ] EventID 4723-4724 (Password reset or changed)
+    - [ ] EventID 4725 (User Disabled)
+    - [ ] EventID 4726 (User Deleted)
+    - [ ] EventID 4704 (User right assigned)
+    - [ ] EventID 4705 (User right removed)
   - Group Changes
-    - [] EventID	4727 	A security-enabled global group was created
-    - [] EventID	4728 	(member was added to a security-enabled global group)
-    - [] EventID	4729 	(member was removed from a security-enabled global group)
-    - [] EventID	4730 	(security-enabled global group was deleted)
-    - [] EventID	4731 	(security-enabled local group was created)
-    - [] EventID	4732 	(member was added to a security-enabled local group)
-    - [] EventID	4733 	(member was removed from a security-enabled local group)
-    - [] EventID	4734 	(security-enabled local group was deleted)
-    - [] EventID	4735 	(security-enabled local group was changed)
-    - [] EventID	4737 	(security-enabled global group was changed)
+    - [ ] EventID	4727 	A security-enabled global group was created
+    - [ ] EventID	4728 	(member was added to a security-enabled global group)
+    - [ ] EventID	4729 	(member was removed from a security-enabled global group)
+    - [ ] EventID	4730 	(security-enabled global group was deleted)
+    - [ ] EventID	4731 	(security-enabled local group was created)
+    - [ ] EventID	4732 	(member was added to a security-enabled local group)
+    - [ ] EventID	4733 	(member was removed from a security-enabled local group)
+    - [ ] EventID	4734 	(security-enabled local group was deleted)
+    - [ ] EventID	4735 	(security-enabled local group was changed)
+    - [ ] EventID	4737 	(security-enabled global group was changed)
 - Exporter
   - [x] Neo4j
   - [x] Json
-  - [] Xml
-  - [] Csv
+  - [x] Xml
+  - [ ] Csv
   

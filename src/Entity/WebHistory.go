@@ -41,15 +41,16 @@ func NewWebHistoryFromFirefox(pl PlasoLog) WebHistory {
 
 	var utc, _ = time.LoadLocation("UTC")
 	wh.Timestamp = int(pl.Timestamp)
-	wh.LastTimeVisited = time.UnixMicro(int64(pl.Timestamp / 1000)).In(utc)
-
+	wh.LastTimeVisited = time.UnixMicro(int64(wh.Timestamp)).In(utc)
 	wh.VisitCount = pl.VisitCount
 
 	wh.Evidence = append(wh.Evidence, pl.Message)
 
 	u := NewUserFromPath(pl.Filename)
-	if u != nil {
+	if u != nil || u.Name != "" {
 		wh.User = u.Name
+	} else {
+		log.Println("Error parsing user from path: ", pl.Filename)
 	}
 
 	return wh
@@ -63,7 +64,7 @@ func NewWebHistoryFromChrome(pl PlasoLog) WebHistory {
 
 	var utc, _ = time.LoadLocation("UTC")
 	wh.Timestamp = int(pl.Timestamp)
-	wh.LastTimeVisited = time.UnixMicro(int64(pl.Timestamp / 1000)).In(utc)
+	wh.LastTimeVisited = time.UnixMicro(int64(pl.Timestamp / 1000000)).In(utc)
 
 	wh.VisitCount = int(pl.TypedCount)
 
