@@ -6,9 +6,10 @@
 *.dylib
 data/
 output/
-example/
+examples/
 tmp/
 
+go.mod
 # Test binary, built with `go test -c`
 *.test
 
