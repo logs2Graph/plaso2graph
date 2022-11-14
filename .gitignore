@@ -9,7 +9,7 @@ output/
 examples/
 tmp/
 
-go.mod
+go.sum
 # Test binary, built with `go test -c`
 *.test
 
