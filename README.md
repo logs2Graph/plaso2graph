@@ -14,7 +14,7 @@ This tool takes as input the format "json_line" from plaso outputs and gives an 
 
 ## Tech Choice
 
-### Why Plaso ?
+### Why Plaso ?
 
 We use Plaso as input because it parse a large collection of artefact and order them into a timeline, this provide us a standard and easier way to process artefacts and also make simpler the merge between artefacts.
 
