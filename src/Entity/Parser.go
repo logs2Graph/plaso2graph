@@ -226,54 +226,6 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 			case 4705:
 				log.Fatal("4705: ", pl.Xml_string)
 				break
-			case 4720:
-				log.Fatal("4720: ", pl.Xml_string)
-				break
-			case 4722:
-				log.Fatal("4722: ", pl.Xml_string)
-				break
-			case 4723:
-				log.Fatal("4723: ", pl.Xml_string)
-				break
-			case 4724:
-				log.Fatal("4724: ", pl.Xml_string)
-				break
-			case 4725:
-				log.Fatal("4725: ", pl.Xml_string)
-				break
-			case 4726:
-				log.Fatal("4726: ", pl.Xml_string)
-				break
-			case 4728:
-				log.Fatal("4728: ", pl.Xml_string)
-				break
-			case 4729:
-				log.Fatal("4729: ", pl.Xml_string)
-				break
-			case 4730:
-				log.Fatal("4730: ", pl.Xml_string)
-				break
-			case 4731:
-				log.Fatal("4731: ", pl.Xml_string)
-				break
-			case 4732:
-				log.Fatal("4732: ", pl.Xml_string)
-				break
-			case 4733:
-				log.Fatal("4733: ", pl.Xml_string)
-				break
-			case 4734:
-				log.Fatal("4734: ", pl.Xml_string)
-				break
-			case 4735:
-				log.Fatal("4735: ", pl.Xml_string)
-				break
-			case 4737:
-				log.Fatal("4737: ", pl.Xml_string)
-				break
-			case 4738:
-				log.Fatal("4738: ", pl.Xml_string)
-				break
 			default:
 				e := NewEventFromEvtx(*pl.EvtxLog)
 				events = AddEvent(events, e)

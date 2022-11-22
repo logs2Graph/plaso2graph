@@ -139,14 +139,13 @@ func NewProcessFrom4688(evtx EvtxLog) Process {
 	handleErr(err)
 	process.CreatedTime = t
 	process.Timestamp = int(t.UnixNano())
-	process.FullPath = GetDataValue(evtx, "NewProcessName")
 	process.PID = convertOct(GetDataValue(evtx, "NewProcessId"))
 	process.Commandline = GetDataValue(evtx, "CommandLine")
-	splitted_path := strings.Split(process.FullPath, "\\")
-	process.Filename = splitted_path[len(splitted_path)-1]
+	process.FullPath = strings.ToLower(GetDataValue(evtx, "NewProcessName"))
+	process.Filename = getFilename(process.FullPath)
 
 	process.PPID = convertOct(GetDataValue(evtx, "ProcessId"))
-	process.ParentProcessName = GetDataValue(evtx, "ParentProcessName")
+	process.ParentProcessName = strings.ToLower(GetDataValue(evtx, "ParentProcessName"))
 
 	process.User = GetDataValue(evtx, "TargetUserName")
 	process.UserDomain = GetDataValue(evtx, "TargetDomainName")
@@ -167,9 +166,10 @@ func NewProcessFromSysmon1(evtx EvtxLog) Process {
 	process.CreatedTime = t
 	process.Timestamp = int(t.UnixNano())
 
-	process.FullPath = GetDataValue(evtx, "Image")
+	process.FullPath = strings.ToLower(GetDataValue(evtx, "Image"))
 	splitted_path := strings.Split(process.FullPath, "\\")
 	process.Filename = splitted_path[len(splitted_path)-1]
+
 	process.Commandline = GetDataValue(evtx, "CommandLine")
 	process.PID = convertOct(GetDataValue(evtx, "ProcessId"))
 
@@ -183,7 +183,7 @@ func NewProcessFromSysmon1(evtx EvtxLog) Process {
 	}
 
 	process.PPID = convertOct(GetDataValue(evtx, "ParentProcessId"))
-	process.ParentProcessName = GetDataValue(evtx, "ParentImage")
+	process.ParentProcessName = strings.ToLower(GetDataValue(evtx, "ParentImage"))
 	process.ParentProcessCommandline = GetDataValue(evtx, "ParentCommandLine")
 
 	//Parse Domain and Users
@@ -218,7 +218,7 @@ func NewProcessFromPrefetchFile(pf PlasoLog) Process {
 	process.Evidence = append(process.Evidence, pf.DisplayName)
 
 	prefetch_file := getFilename(pf.DisplayName)
-	process.Filename = strings.Split(prefetch_file, "-")[0]
+	process.Filename = strings.ToLower(strings.Split(prefetch_file, "-")[0])
 
 	var utc, _ = time.LoadLocation("UTC")
 	process.Timestamp = int(pf.Timestamp)
@@ -243,10 +243,10 @@ func NewProcessFromUserAssist(pl PlasoLog) Process {
 	// if ValueName contains ".exe" it is a path, if not it is a Application Name
 	match, _ := regexp.MatchString("\\.exe$", pl.ValueName)
 	if match {
-		process.FullPath = pl.ValueName
-		process.Filename = getFilename(pl.ValueName)
+		process.FullPath = strings.ToLower(pl.ValueName)
+		process.Filename = getFilename(process.FullPath)
 	} else {
-		process.Filename = pl.ValueName
+		process.Filename = strings.ToLower(pl.ValueName)
 	}
 
 	return process
@@ -271,11 +271,11 @@ func NewProcessFromShellBag(pl PlasoLog) Process {
 
 	index := strings.Index(pl.ShellItemPath, " ")
 	if index >= 0 {
-		process.FullPath = pl.ShellItemPath[index:]
+		process.FullPath = strings.ToLower(pl.ShellItemPath[index:])
 	} else {
 		process.FullPath = pl.ShellItemPath
 	}
-	process.Filename = getFilename(process.FullPath)
+	process.Filename = strings.ToLower(getFilename(process.FullPath))
 
 	return process
 }

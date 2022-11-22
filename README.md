@@ -32,9 +32,13 @@ This parts lists all Entities and associated artefacts extracted from Plaso.
   - [x] ShellBag
   - [ ] SRUM
   - [ ] MRU
-  - [ ] Evtx Sysmon EventID 10 (memory access)
+  - [x] Evtx Sysmon EventID 10 (memory access)
   - [ ] Evtx Sysmon EventID 7 (Image Loaded)
-  - [ ] Evtx Sysmon EventID 9 (Raw Access Read)
+  - [x] Evtx Sysmon EventID 9 (Raw Access Read)
+- Scripts:
+  - [ ] Evtx EventID 4103
+  - [ ] Evtx EventID 4104
+  - [ ] Powershell Transcript
 - User:
   - [x] Evtx Security
   - [x] Evtx Sysmon
@@ -64,8 +68,8 @@ This parts lists all Entities and associated artefacts extracted from Plaso.
   - [ ] Service
 - File:
   - [ ] Evtx Sysmon Event ID 9 (Raw Access Read)
-  - [ ] Evtx Sysmon Event ID 11 (File Create)
-  - [ ] Evtx Sysmon Event ID 23 (File Delete)
+  - [x] Evtx Sysmon Event ID 11 (File Create)
+  - [x] Evtx Sysmon Event ID 23 (File Delete)
   - [x] MFT (Note: Works but will take a long time.)
 - Misc Events:
   - [ ] USB
@@ -75,31 +79,31 @@ This parts lists all Entities and associated artefacts extracted from Plaso.
   - GPO Changes
   - Group Changes
   - User Changes
-    - [ ] EventID 4738 (A user account was changed)
-    - [ ] EventID 4720 (User Created)
-    - [ ] EventID 4722 (User Enabled)
-    - [ ] EventID 4723-4724 (Password reset or changed)
-    - [ ] EventID 4725 (User Disabled)
-    - [ ] EventID 4726 (User Deleted)
+    - [x] EventID 4738 (A user account was changed)
+    - [x] EventID 4720 (User Created)
+    - [x] EventID 4722 (User Enabled)
+    - [x] EventID 4723-4724 (Password reset or changed)
+    - [x] EventID 4725 (User Disabled)
+    - [x] EventID 4726 (User Deleted)
     - [ ] EventID 4704 (User right assigned)
     - [ ] EventID 4705 (User right removed)
   - Group Changes
     - [ ] EventID	4727 	A security-enabled global group was created
-    - [ ] EventID	4728 	(member was added to a security-enabled global group)
-    - [ ] EventID	4729 	(member was removed from a security-enabled global group)
+    - [x] EventID	4728 	(member was added to a security-enabled global group)
+    - [x] EventID	4729 	(member was removed from a security-enabled global group)
     - [ ] EventID	4730 	(security-enabled global group was deleted)
-    - [ ] EventID	4731 	(security-enabled local group was created)
-    - [ ] EventID	4732 	(member was added to a security-enabled local group)
-    - [ ] EventID	4733 	(member was removed from a security-enabled local group)
+    - [x] EventID	4731 	(security-enabled local group was created)
+    - [x] EventID	4732 	(member was added to a security-enabled local group)
+    - [x] EventID	4733 	(member was removed from a security-enabled local group)
     - [ ] EventID	4734 	(security-enabled local group was deleted)
-    - [ ] EventID	4735 	(security-enabled local group was changed)
-    - [ ] EventID	4737 	(security-enabled global group was changed)
+    - [x] EventID	4735 	(security-enabled local group was changed)
+    - [x] EventID	4737 	(security-enabled global group was changed)
 - Exporter
   - [x] Neo4j
   - [x] Json
   - [x] Xml
   - [ ] Csv
-
-
-## Test
-test access  
+- Improvements
+- [ ] Convert Event Entities to Relationships
+- [ ] Merge Files when possible
+- [ ] Assign Computer Name by default (To support multiple computers)

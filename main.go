@@ -221,7 +221,7 @@ func MergeEntities(data []interface{}) []interface{} {
 	for i, v := range data {
 		switch v.(type) {
 		case []Process:
-			data[i] = MergeProcesses(data[i].([]Process), 100)
+			data[i] = MergeProcesses(data[i].([]Process), 1000)
 			break
 		}
 	}
@@ -308,18 +308,18 @@ func ProcessFile(path string, args map[string]interface{}) {
 func main() {
 	flag.Parse()
 	args := ProcessArgs()
-
 	args = InitializeExtractor(args)
-	fmt.Println(fmt.Sprint(args["output_file"]))
-
 	t := time.Now()
-
-	fmt.Println("Extractor : ", args["extractor"])
-
+	fmt.Println("Starting extraction")
 	ProcessFile(args["source"].(string), args)
 	elapsed := time.Since(t)
 	fmt.Println("Time elapsed: ", elapsed)
+	fmt.Println("Done")
 
+	fmt.Println("Starting Post-Processing")
+	t = time.Now()
 	PostProcessing(args)
-
+	elapsed = time.Since(t)
+	fmt.Println("Time elapsed: ", elapsed)
+	fmt.Println("Done")
 }

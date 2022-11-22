@@ -2,7 +2,7 @@ package Extractor
 
 import (
 	"context"
-	//"fmt"
+	"fmt"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"log"
 	. "plaso2graph/master/src/Entity"
@@ -189,10 +189,17 @@ func ParrallelNeo4jExtract(data []interface{}, args map[string]interface{}) {
 
 func Neo4jPostProcessing(args map[string]interface{}) {
 	con := args["connector"].(Neo4JConnector)
+	fmt.Println("Linking processes...")
 	linkProcess(con)
+	fmt.Println("Linking user to process...")
 	linkUsers(con)
+	fmt.Println("Linking computers...")
 	linkComputers(con)
+
+	fmt.Println("Linking Connections...")
 	handleConnections(con)
+
+	fmt.Println("Processing Events...")
 	handleEvents(con)
 }
 
@@ -448,8 +455,9 @@ func InsertEventNeo4j(con Neo4JConnector, e Event) {
 func persistEvent(tx neo4j.Transaction, e Event) (interface{}, error) {
 	query := `CREATE (:Event {timestamp: $timestamp, date: $date, event_type: $event_type, title: $title,
 		user_source: $user_source, user_destination: $user_destination, domain_source: $domain_source,
-		domain_destination: $domain_destination, process: $process, process_id: $process_id, fullpath: $fullpath, filename: $filename,
-		extension: $extension})`
+		domain_destination: $domain_destination, group: $group, group_domain: $group_domain, process_source: $process_source, process_source_id: $process_source_id,
+		process_target: $process_target, process_target_id: $process_target_id, fullpath: $fullpath, filename: $filename,
+		extension: $extension, evidence: $evidence})`
 	parameters := map[string]interface{}{
 		"timestamp":          e.Timestamp,
 		"date":               e.Date,
@@ -457,13 +465,18 @@ func persistEvent(tx neo4j.Transaction, e Event) (interface{}, error) {
 		"event_type":         e.Type,
 		"user_source":        e.UserSource,
 		"user_destination":   e.UserDestination,
-		"domain_source":      e.UserDomainSource,
+		"domain_source":      e.UserSourceDomain,
 		"domain_destination": e.UserDestinationDomain,
-		"process":            e.Process,
-		"process_id":         e.ProcessId,
+		"group":              e.GroupName,
+		"group_domain":       e.GroupDomain,
+		"process_source":     e.ProcessSource,
+		"process_source_id":  e.ProcessSourceId,
+		"process_target":     e.ProcessTarget,
+		"process_target_id":  e.ProcessTargetId,
 		"fullpath":           e.FullPath,
 		"filename":           e.Filename,
 		"extension":          e.Extension,
+		"evidence":           e.Evidence,
 	}
 	_, err := tx.Run(query, parameters)
 	return nil, err
@@ -538,15 +551,14 @@ func handleConnections(con Neo4JConnector) {
 func handleEvents(con Neo4JConnector) {
 	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 
+	fmt.Println("Create File from 'File Create' and 'File Delete' Events")
+
 	// Create File Based On Events "CreateFile" and "DeleteFile"
 	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		query := `match (e:Event) where e.event_type = "File Created" with collect(e) as events
 		UNWIND events as event
 		create (:File {fullpath: event.fullpath, filename: event.filename, extension:event.extension, 
-		timestamp:event.timestamp, date:event.date, timestamp_desc:"Creation Time"})
-		with event
-		match (f:File) match (p:Process) where f.fullpath = event.fullpath and p.fullpath = event.process and p.pid = event.process_id
-		merge (p)-[:CREATE]->(f)`
+		timestamp:event.timestamp, date:event.date, timestamp_desc:"Creation Time"})`
 		parameters := map[string]interface{}{}
 		_, err := tx.Run(query, parameters)
 		return nil, err
@@ -557,10 +569,50 @@ func handleEvents(con Neo4JConnector) {
 		query := `match (e:Event) where e.event_type = "File Deleted" with collect(e) as events
 		UNWIND events as event
 		create (:File {fullpath: event.fullpath, filename: event.filename, extension:event.extension, 
-		timestamp:event.timestamp, date:event.date, timestamp_desc:"Deletion Time"})
-		with event
-		match (f:File) match (p:Process) where f.fullpath = event.fullpath and p.fullpath = event.process and p.pid = event.process_id
-		merge (p)-[:Delete]->(f)`
+		timestamp:event.timestamp, date:event.date, timestamp_desc:"Deletion Time"})`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+
+	fmt.Println("Link Processes to Files based on 'File Create' and 'File Delete' Events")
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "File Created"
+		match (p:Process) where e.process_source = p.fullpath and e.process_source_id = p.pid
+		match (f:File) where f.fullpath = e.fullpath
+		merge (p)-[:CREATE]->(f)`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "File Deleted"
+		match (p:Process) where e.process_source = p.fullpath and e.process_source_id = p.pid
+		match (f:File) where f.fullpath = e.fullpath
+		merge (p)-[:DELETE]->(f)`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+
+	fmt.Println("Link Users to Events based on Target or Subject User")
+	// Link Events to Users
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (u:User) match (e:Event) where e.user_destination = u.name
+		merge (e)<-[:ACTS]-(u)`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (u:User) match (e:Event) where e.user_source = u.name
+		merge (e)-[:ON]->(u)`
 		parameters := map[string]interface{}{}
 		_, err := tx.Run(query, parameters)
 		return nil, err

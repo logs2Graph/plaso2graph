@@ -62,14 +62,15 @@ func NewScheduledTaskFromTask(task PlasoLog) ScheduledTask {
 	r, _ := regexp.Compile(`by: (?P<User>.*) Working directory.*Trigger type: (?P<Trigger>.*)`)
 	matches := r.FindStringSubmatch(task.Message)
 
-	res.Trigger = matches[0]
-
-	// When User like "NT AUTHORITY\SYSTEM"
-	splittedUser := strings.Split(matches[1], "\\")
-	if len(splittedUser) > 1 {
-		res.User = splittedUser[1]
-	} else {
-		res.User = matches[1]
+	if len(matches) > 0 {
+		res.Trigger = matches[0]
+		// When User like "NT AUTHORITY\SYSTEM"
+		splittedUser := strings.Split(matches[1], "\\")
+		if len(splittedUser) > 1 {
+			res.User = splittedUser[1]
+		} else {
+			res.User = matches[1]
+		}
 	}
 
 	return res

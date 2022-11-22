@@ -19,17 +19,23 @@ type Event struct {
 	Title                 string
 	Type                  string
 	UserSource            string
-	UserDomainSource      string
+	UserSourceDomain      string
 	UserSourceLogonID     string
 	UserDestination       string
 	UserDestinationDomain string
 
-	// Event File Information (ex: Sysmon 11,23)
-	Filename  string
-	FullPath  string
-	Extension string
-	Process   string
-	ProcessId int
+	// Event File Information (ex: Sysmon 11,23,10, etc)
+	Filename        string
+	FullPath        string
+	Extension       string
+	ProcessSource   string
+	ProcessSourceId int
+	ProcessTarget   string
+	ProcessTargetId int
+
+	// For events involving a group
+	GroupName   string
+	GroupDomain string
 }
 
 func AddEvent(cs []Event, c Event) []Event {
@@ -66,7 +72,9 @@ func NewEventFromEvtx(evtx EvtxLog) Event {
 
 	//Get Users (if any)
 	c.UserDestination = GetDataValue(evtx, "SubjectUserName")
+	c.UserDestinationDomain = GetDataValue(evtx, "SubjectDomainName")
 	c.UserSource = GetDataValue(evtx, "TargetUserName")
+	c.UserSourceDomain = GetDataValue(evtx, "TargetDomainName")
 	c.UserSourceLogonID = GetDataValue(evtx, "TargetLogonId")
 
 	switch evtx.System.EventID {
@@ -111,11 +119,22 @@ func NewEventFromEvtx(evtx EvtxLog) Event {
 		break
 	case 4723:
 		c.Type = "Password Change Attempted"
-		c.Title = "User " + c.UserSource + " attempted to change password."
+
+		// Switch UserDestination and UserSource
+		tmp := c.UserDestination
+		c.UserDestination = c.UserSource
+		c.UserSource = tmp
+
+		c.Title = "User " + c.UserDestination + " attempted to change " + c.UserSource + "'s password."
 		break
 	case 4724:
 		c.Type = "Password Reset Attempted"
-		c.Title = "User " + c.UserSource + " attempted to reset " + c.UserDestination + "'s password."
+
+		// Switch UserDestination and UserSource
+		c.UserDestination = c.UserSource
+		c.UserSource = GetDataValue(evtx, "SubjectUserName")
+
+		c.Title = "User " + c.UserDestination + " attempted to reset " + c.UserSource + "'s password."
 		break
 	case 4725:
 		c.Type = "User Account Disabled"
@@ -124,6 +143,77 @@ func NewEventFromEvtx(evtx EvtxLog) Event {
 	case 4726:
 		c.Type = "User Account Deleted"
 		c.Title = "User " + c.UserSource + " deleted account" + c.UserDestination + "."
+		break
+	case 4728:
+		c.Type = "Member added to global security group"
+		c.GroupName = c.UserSource
+		c.GroupDomain = c.UserSourceDomain
+		c.UserSource = GetDataValue(evtx, "MemberName")
+		c.UserSourceLogonID = GetDataValue(evtx, "MemberSid")
+		c.Title = "User " + c.UserSource + " added to group " + c.GroupName + " by " + c.UserDestination + "."
+		break
+	case 4729:
+		c.Type = "Member removed from global security group"
+		c.GroupName = c.UserSource
+		c.GroupDomain = c.UserSourceDomain
+		c.UserSource = GetDataValue(evtx, "MemberName")
+		c.UserSourceLogonID = GetDataValue(evtx, "MemberSid")
+		c.Title = "User " + c.UserSource + " removed from group " + c.GroupName + " by " + c.UserDestination + "."
+		break
+	case 4730:
+		log.Fatal("4730: ", c.Evidence[0])
+		break
+	case 4731:
+		c.Type = "Security Enabled Local Group Created"
+		c.GroupName = c.UserSource
+		c.GroupDomain = c.UserSourceDomain
+		c.UserSource = ""
+		c.UserSourceLogonID = ""
+		c.Title = c.GroupName + " group was enabled	 by " + c.UserDestination + "."
+		break
+	case 4732:
+		c.Type = "Member added to Local Security Group"
+		c.GroupName = c.UserSource
+		c.GroupDomain = c.UserSourceDomain
+		c.UserSource = ""
+		c.UserSourceDomain = ""
+		c.Title = c.UserDestination + " Added to local security group " + c.GroupDomain + "."
+		break
+	case 4733:
+		c.Type = "Member removed from Local Security Group"
+		c.GroupName = c.UserSource
+		c.GroupDomain = c.UserSourceDomain
+		c.UserSource = GetDataValue(evtx, "MemberName")
+		c.UserSourceLogonID = GetDataValue(evtx, "MemberSid")
+		c.Title = c.UserSource + " Removed from local security group " + c.GroupDomain + " by " + c.UserDestination + "."
+		break
+	case 4734:
+		log.Fatal("4734: ", c.Evidence[0])
+		break
+	case 4735:
+		c.Type = "Local Security Group Enabled"
+		c.GroupName = c.UserSource
+		c.GroupDomain = c.UserSourceDomain
+		c.UserSource = ""
+		c.UserSourceDomain = ""
+		c.Title = "Local security group " + c.UserSource + " enabled by " + c.UserDestination + "."
+		break
+	case 4737:
+		c.Type = "Security-enabled global group was changed."
+		c.Type = "Local Security Group Enabled"
+		c.GroupName = c.UserSource
+		c.GroupDomain = c.UserSourceDomain
+		c.UserSource = ""
+		c.UserSourceDomain = ""
+		c.Title = "Global security group " + c.UserSource + " changed by " + c.UserDestination + "."
+		break
+	case 4738:
+		c.Type = "User Account Changed"
+		// switch User Dest and User Source
+		tmp := c.UserDestination
+		c.UserDestination = c.UserSource
+		c.UserSource = tmp
+		c.Title = "User " + c.UserSource + " changed " + c.UserDestination + " account."
 		break
 	}
 
@@ -138,7 +228,7 @@ func NewEventFromSysmon(e EvtxLog) Event {
 	splitted_user := strings.Split(tmp, "\\")
 	if len(splitted_user) > 1 {
 		c.UserSource = splitted_user[1]
-		c.UserDomainSource = splitted_user[0]
+		c.UserSourceDomain = splitted_user[0]
 	} else {
 		c.UserSource = tmp
 	}
@@ -155,7 +245,14 @@ func NewEventFromSysmon(e EvtxLog) Event {
 	switch e.System.EventID {
 	case 7:
 		c.Type = "Image Loaded"
-		log.Fatal(c.Evidence[0])
+		c.ProcessSource = strings.ToLower(GetDataValue(e, "Image"))
+		c.ProcessSourceId = convertOct(GetDataValue(e, "ProcessId"))
+		c.FullPath = strings.ToLower(GetDataValue(e, "ImageLoaded"))
+		c.Filename = getFilename(c.FullPath)
+		c.Extension = getExtension(c.Filename)
+		c.UserSource = ""
+		c.UserSourceDomain = ""
+		c.Title = "Process " + c.ProcessSource + " read file " + c.FullPath + "."
 		break
 	case 9:
 		c.Type = "Raw Access Read"
@@ -163,29 +260,32 @@ func NewEventFromSysmon(e EvtxLog) Event {
 		break
 	case 10:
 		c.Type = "Process's Memory Access"
-		log.Fatal(c.Evidence[0])
+		c.ProcessSource = strings.ToLower(GetDataValue(e, "SourceImage"))
+		c.ProcessSourceId = convertOct(GetDataValue(e, "SourceProcessId"))
+
+		c.ProcessTarget = strings.ToLower(GetDataValue(e, "TargetImage"))
+		c.ProcessTargetId = convertOct(GetDataValue(e, "TargetProcessId"))
+		c.Title = "Process " + c.ProcessSource + " accessed memory of " + c.ProcessTarget + "."
 		break
 	case 11:
 		c.Type = "File Created"
-
-		c.Process = GetDataValue(e, "Image")
-		c.ProcessId = convertOct(GetDataValue(e, "ProcessId"))
+		c.ProcessSource = strings.ToLower(GetDataValue(e, "Image"))
+		c.ProcessSourceId = convertOct(GetDataValue(e, "ProcessId"))
 		c.FullPath = GetDataValue(e, "TargetFilename")
 		c.Filename = getFilename(c.FullPath)
 		c.Extension = getExtension(c.Filename)
 
-		c.Title = "File " + c.FullPath + " created by " + c.Process + " (" + fmt.Sprint(c.ProcessId) + ")."
+		c.Title = "File " + c.FullPath + " created by " + c.ProcessSource + " (" + fmt.Sprint(c.ProcessSourceId) + ")."
 		break
 	case 23:
 		c.Type = "File Deleted"
-
-		c.Process = GetDataValue(e, "Image")
-		c.ProcessId = convertOct(GetDataValue(e, "ProcessId"))
+		c.ProcessSource = strings.ToLower(GetDataValue(e, "Image"))
+		c.ProcessSourceId = convertOct(GetDataValue(e, "ProcessId"))
 		c.FullPath = GetDataValue(e, "TargetFilename")
 		c.Filename = getFilename(c.FullPath)
 		c.Extension = getExtension(c.Filename)
 
-		c.Title = "File " + c.FullPath + " deleted by " + c.Process + " (" + fmt.Sprint(c.ProcessId) + ")."
+		c.Title = "File " + c.FullPath + " deleted by " + c.ProcessSource + " (" + fmt.Sprint(c.ProcessSourceId) + ")."
 		break
 	}
 

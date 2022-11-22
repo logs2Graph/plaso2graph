@@ -55,9 +55,9 @@ func newUsersFromSecurity(evtx EvtxLog) (*User, *User) { //Best Effort
 	s_Domain := GetDataValue(evtx, "SubjectDomainName")
 	// If there is no Name, There is no user
 	if s_name != "Not Found." {
-		u1.Name = s_name
+		u1.Name = strings.ToLower(s_name)
 		u1.SID = s_SID
-		u1.Domain = s_Domain
+		u1.Domain = strings.ToLower(s_Domain)
 	} else {
 		u1 = nil
 	}
@@ -67,9 +67,9 @@ func newUsersFromSecurity(evtx EvtxLog) (*User, *User) { //Best Effort
 	t_Domain := GetDataValue(evtx, "TargetDomainName")
 	// If there is no Name, There is no user
 	if t_name != "Not Found." {
-		u2.Name = t_name
+		u2.Name = strings.ToLower(t_name)
 		u2.SID = t_SID
-		u2.Domain = t_Domain
+		u2.Domain = strings.ToLower(t_Domain)
 	} else {
 		u2 = nil
 	}
@@ -85,7 +85,7 @@ func NewUserFromPath(path string) *User {
 			splitted = strings.Split(path, "/")
 		}
 		//fmt.Println(splitted)
-		u.Name = splitted[2]
+		u.Name = strings.ToLower(splitted[2])
 
 	} else {
 		return nil // Not a user
