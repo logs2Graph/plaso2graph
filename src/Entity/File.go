@@ -14,6 +14,8 @@ type File struct {
 	IsAllocated   bool
 	Date          time.Time
 	Extension     string
+	Hash          string
+	PeType        string
 	Evidence      []string
 }
 
@@ -91,4 +93,12 @@ func NewFileFromSysmon23(evtx EvtxLog) File {
 	f.Evidence = append(f.Evidence, string(xml_string))
 
 	return f
+}
+
+func NewFileFromPE(pl PlasoLog) File {
+	file := NewFileFromMFT(pl)
+	file.Hash = pl.ImportedHash
+	file.PeType = pl.PeType
+
+	return file
 }

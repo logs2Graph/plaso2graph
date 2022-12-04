@@ -1,19 +1,24 @@
 package Entity
 
 import (
+	"time"
 	//"fmt"
 	"strings"
 )
 
 type User struct {
-	Name   string
-	SID    string // Windows
-	Domain string // Windows
+	LastPasswordChange    time.Time
+	LastPasswordTimestamp int
+	FullName              string
+	Username              string
+	Comments              string
+	SID                   string // Windows
+	Domain                string // Windows
 }
 
 func findUser(users []User, user User) int {
 	for i, u := range users {
-		if u.Name == user.Name {
+		if u.FullName == user.FullName || u.Username == user.FullName {
 			return i
 		}
 	}
@@ -21,8 +26,18 @@ func findUser(users []User, user User) int {
 }
 
 func mergeUser(dest User, src User) User {
+	if src.Username != "" && dest.Username == "" {
+		dest.FullName = src.FullName
+		dest.Username = src.Username
+		dest.Comments = src.Comments
+	}
+
 	if dest.SID == "Not Found." {
 		dest.SID = src.SID
+	}
+
+	if dest.FullName == "" {
+		dest.FullName = dest.Username
 	}
 	return dest
 }
@@ -47,7 +62,6 @@ func UnionUsers(dest []User, src []User) []User {
 }
 
 func newUsersFromSecurity(evtx EvtxLog) (*User, *User) { //Best Effort
-	//TODO: User From Security Default
 	var u1, u2 = new(User), new(User)
 
 	s_name := GetDataValue(evtx, "SubjectUserName")
@@ -55,7 +69,7 @@ func newUsersFromSecurity(evtx EvtxLog) (*User, *User) { //Best Effort
 	s_Domain := GetDataValue(evtx, "SubjectDomainName")
 	// If there is no Name, There is no user
 	if s_name != "Not Found." {
-		u1.Name = strings.ToLower(s_name)
+		u1.FullName = strings.ToLower(s_name)
 		u1.SID = s_SID
 		u1.Domain = strings.ToLower(s_Domain)
 	} else {
@@ -67,7 +81,7 @@ func newUsersFromSecurity(evtx EvtxLog) (*User, *User) { //Best Effort
 	t_Domain := GetDataValue(evtx, "TargetDomainName")
 	// If there is no Name, There is no user
 	if t_name != "Not Found." {
-		u2.Name = strings.ToLower(t_name)
+		u2.FullName = strings.ToLower(t_name)
 		u2.SID = t_SID
 		u2.Domain = strings.ToLower(t_Domain)
 	} else {
@@ -85,10 +99,22 @@ func NewUserFromPath(path string) *User {
 			splitted = strings.Split(path, "/")
 		}
 		//fmt.Println(splitted)
-		u.Name = strings.ToLower(splitted[2])
+		u.FullName = strings.ToLower(splitted[2])
 
 	} else {
 		return nil // Not a user
 	}
 	return u
+}
+
+func NewUserFromSAM(pl PlasoLog) *User {
+	var user = new(User)
+
+	user.Comments = pl.Comments
+	user.FullName = pl.FullName
+	user.Username = pl.Username
+	user.LastPasswordTimestamp = int(pl.Timestamp)
+	user.LastPasswordChange = time.Unix(int64(pl.Timestamp), 0)
+
+	return user
 }

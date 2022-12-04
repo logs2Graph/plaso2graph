@@ -51,14 +51,25 @@ type PlasoLog struct {
 	TimestampDesc string  `json:"timestamp_desc"`
 	Xml_string    string  `json:"xml_string"`
 	Filename      string  `json:"filename"`
+	Name          string  `json:"name"`
+
+	// Prefetch
+	Executable string `json:"executable"`
+
+	// Link
+	EnvVarLocation string `json:"env_var_location"`
+
+	// Bam
+	BinaryPath string `json:"binary_path"`
 
 	//Registry
 	ValueName string `json:"value_name"`
 
 	//UserAssist
-	NumberOfExecutions       int `json:"number_of_executions"`
-	ApplicationFocusCount    int `json:"application_focus_count"`
-	ApplicationFocusDuration int `json:"application_focus_duration"`
+	NumberOfExecutions       int      `json:"number_of_executions"`
+	ApplicationFocusCount    int      `json:"application_focus_count"`
+	ApplicationFocusDuration int      `json:"application_focus_duration"`
+	Entries                  []string `json:"entries"`
 
 	//ShellBags
 	ShellItemPath string `json:"shell_item_path"`
@@ -67,6 +78,18 @@ type PlasoLog struct {
 	Application string `json:"application"`
 	Comment     string `json:"comment"`
 	Parameters  string `json:"parameters"`
+
+	// PE
+	PeType       string `json:"pe_type"`
+	ImportedHash string `json:"imphash"`
+
+	// Service
+	ServiceType  int    `json:"service_type"`
+	StartType    int    `json:"start_type"`
+	ErrorControl int    `json:"error_control"`
+	ImagePath    string `json:"image_path"`
+	ServiceDll   string `json:"service_dll"`
+	ObjectName   string `json:"object_name"`
 
 	//Web History
 	Url        string `json:"url"`
@@ -79,6 +102,17 @@ type PlasoLog struct {
 	PathHints     []string `json:"path_hints"`
 	IsAllocated   bool     `json:"is_allocated"`
 	AttributeType string   `json:"attribute_type"`
+
+	//SRUM
+	BackgroundBytesRead    int `json:"background_bytes_read"`
+	BackgroundBytesWritten int `json:"background_bytes_written"`
+	ForegroundBytesRead    int `json:"foreground_bytes_read"`
+	ForegroundBytesWritten int `json:"foreground_bytes_written"`
+
+	// SAM
+	Username string `json:"username"`
+	FullName string `json:"fullname"`
+	Comments string `json:"comments"`
 
 	//Evtx
 	EvtxLog *EvtxLog
@@ -97,7 +131,7 @@ func GetDataValue(evtx EvtxLog, name string) string {
 
 func ParseEntities(data []interface{}, lines []PlasoLog) []interface{} {
 	for _, line := range lines {
-		t_ps, t_users, t_computers, t_domains, t_tasks, t_webhistories, t_files, t_connections, t_events := ParseEntity(line)
+		t_ps, t_users, t_computers, t_domains, t_tasks, t_services, t_webhistories, t_files, t_connections, t_events, t_registries := ParseEntity(line)
 		for i, _ := range data {
 			switch data[i].(type) {
 			case []Process:
@@ -115,6 +149,9 @@ func ParseEntities(data []interface{}, lines []PlasoLog) []interface{} {
 			case []ScheduledTask:
 				data[i] = UnionScheduledTasks(data[i].([]ScheduledTask), t_tasks)
 				break
+			case []Service:
+				data[i] = UnionServices(data[i].([]Service), t_services)
+				break
 			case []WebHistory:
 				data[i] = UnionWebHistories(data[i].([]WebHistory), t_webhistories)
 				break
@@ -126,6 +163,9 @@ func ParseEntities(data []interface{}, lines []PlasoLog) []interface{} {
 				break
 			case []Event:
 				data[i] = UnionEvents(data[i].([]Event), t_events)
+				break
+			case []Registry:
+				data[i] = UnionRegistries(data[i].([]Registry), t_registries)
 				break
 			}
 		}
@@ -156,7 +196,7 @@ func ParseEvtx(data string) *EvtxLog {
 	return &evtxLog
 }
 
-func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []ScheduledTask, []WebHistory, []File, []Connection, []Event) {
+func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []ScheduledTask, []Service, []WebHistory, []File, []Connection, []Event, []Registry) {
 	var ps []Process
 	var users []User
 	var computers []Computer
@@ -166,6 +206,8 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 	var files []File
 	var connections []Connection
 	var events []Event
+	var services []Service
+	var registries []Registry
 
 	switch pl.DataType {
 	case "windows:evtx:record":
@@ -203,28 +245,31 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 			}
 
 			switch pl.EvtxLog.System.EventID {
+			case 4673:
+				log.Fatal("4673 : ", pl.Xml_string)
+				break
 			case 4688:
 				//Extract Processes from Event Logs
 				process := NewProcessFrom4688(*pl.EvtxLog)
 				ps = AddProcess(ps, process)
 				break
 			case 4699:
-				log.Fatal("4699: ", pl.Xml_string)
+				log.Println("4699: Found but not parsed - ", pl.Xml_string)
 				break
 			case 4700:
-				log.Fatal("4700: ", pl.Xml_string)
+				log.Println("4700: Found but not parsed - ", pl.Xml_string)
 				break
 			case 4701:
-				log.Fatal("4701: ", pl.Xml_string)
+				log.Println("4701: Found but not parsed - ", pl.Xml_string)
 				break
 			case 4702:
-				log.Fatal("4702: ", pl.Xml_string)
+				log.Println("4702: Found but not parsed - ", pl.Xml_string)
 				break
 			case 4704:
-				log.Fatal("4704: ", pl.Xml_string)
+				log.Println("4704: Found but not parsed - ", pl.Xml_string)
 				break
 			case 4705:
-				log.Fatal("4705: ", pl.Xml_string)
+				log.Println("4705: Found but not parsed - ", pl.Xml_string)
 				break
 			default:
 				e := NewEventFromEvtx(*pl.EvtxLog)
@@ -240,24 +285,106 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 			ps = AddProcess(ps, process)
 		}
 		break
-	case "windows:registry:userassist":
 
+	case "windows:prefetch:execution":
+		// Extract Process from Prefetch
+		process := NewProcessFromPrefetchExecution(pl)
+		ps = AddProcess(ps, process)
+		break
+	case "windows:lnk:link":
+		// Extract Process from LNK
+		process := NewProcessFromLink(pl)
+		ps = AddProcess(ps, process)
+		break
+
+	case "windows:registry:amcache":
+		// Extract Process from Amcache
+		process := NewProcessFromAmCache(pl)
+		ps = AddProcess(ps, process)
+		break
+
+	case "windows:registry:appcompatcache":
+		// Extract Process from AppCompatCache
+		process := NewProcessFromAppCompatCache(pl)
+		ps = AddProcess(ps, process)
+		break
+
+	case "windows:registry:bagmru":
+		//log.Fatal("BagMRU: Found but not parsed - ", pl.Xml_string)
+		// TODO: Handle MRU with File or Folder?
+		break
+
+	case "windows:registry:bam":
+		process := NewProcessFromBAM(pl)
+		ps = AddProcess(ps, process)
+		break
+
+	case "windows:registry:mrulist":
+		//log.Fatal("MRUList: Found but not parsed - ", pl.Xml_string)
+		break
+
+	case "windows:registry:mrulistex":
+		//log.Fatal("MRUListEx: Found but not parsed - ", pl.Xml_string)
+		break
+
+	case "windows:srum:application_usage":
+		process := NewProcessFromSRUM(pl)
+		ps = AddProcess(ps, process)
+		break
+
+	case "windows:srum:network_usage":
+		//log.Fatal("Network Usage: Found but not parsed - ", pl.Xml_string)
+		break
+
+	case "windows:srum:network_connectivity":
+		//log.Fatal("Network Connectivity: Found but not parsed - ", pl.Xml_string)
+		break
+
+	case "windows:registry:run":
+		//log.Fatal("Registry Run: Found but not parsed - ", pl.Xml_string)
+		registries = AddRegistry(registries, NewRegistry(pl))
+		break
+
+	case "windows:registry:service":
+		//log.Fatal("Service: Found but not parsed - ", pl.Xml_string)
+		service := NewService(pl)
+		services = AddService(services, service)
+		break
+
+	case "task_scheduler:task_cache:entry":
+		//log.Fatal("Task Cache: Found but not parsed - ", pl.Xml_string)
+		// TODO: Add Scheduled Task Runs Entity
+		break
+
+	case "windows:registry:sam_users":
+		// Create User From SAM Registry
+		user := NewUserFromSAM(pl)
+		users = AddUser(users, user)
+		break
+
+	case "pe":
+		file := NewFileFromPE(pl)
+		files = AddFile(files, file)
+		break
+
+	case "windows:registry:userassist":
 		// Extract Process from UserAssist
 		process := NewProcessFromUserAssist(pl)
 		ps = AddProcess(ps, process)
 		break
-	case "windows:shell_item:file_entry":
 
+	case "windows:shell_item:file_entry":
 		//Extract Process from ShellBags
 		process := NewProcessFromShellBag(pl)
 		ps = AddProcess(ps, process)
 		break
-	case "windows:tasks:job":
 
+	case "windows:tasks:job":
 		//Extract ScheduledTask from Task Scheduler
 		task := NewScheduledTaskFromTask(pl)
 		tasks = AddScheduledTask(tasks, task)
 		break
+
 	case "firefox:places:page_visited":
 		// Extract WebHistory from Firefox
 		wh := NewWebHistoryFromFirefox(pl)
@@ -270,11 +397,11 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 		break
 	case "fs:stat:ntfs":
 		//Extract File from MFT
-		file := NewFileFromMFT(pl)
-		files = AddFile(files, file)
+		//file := NewFileFromMFT(pl)
+		//files = AddFile(files, file)
 		break
 
 	}
 
-	return ps, users, computers, domains, tasks, webhistories, files, connections, events
+	return ps, users, computers, domains, tasks, services, webhistories, files, connections, events, registries
 }

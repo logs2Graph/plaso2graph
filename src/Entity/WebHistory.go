@@ -47,8 +47,8 @@ func NewWebHistoryFromFirefox(pl PlasoLog) WebHistory {
 	wh.Evidence = append(wh.Evidence, pl.Message)
 
 	u := NewUserFromPath(pl.Filename)
-	if u != nil || u.Name != "" {
-		wh.User = u.Name
+	if u != nil || u.FullName != "" {
+		wh.User = u.FullName
 	} else {
 		log.Println("Error parsing user from path: ", pl.Filename)
 	}
@@ -72,7 +72,7 @@ func NewWebHistoryFromChrome(pl PlasoLog) WebHistory {
 
 	u := NewUserFromPath(pl.Filename)
 	if u != nil {
-		wh.User = u.Name
+		wh.User = u.FullName
 	}
 
 	r, err := regexp.Compile("http(?:s|)://(?P<domain>[^/]+)(?P<path>.*)")

@@ -210,10 +210,7 @@ func NewEventFromEvtx(evtx EvtxLog) Event {
 	case 4738:
 		c.Type = "User Account Changed"
 		// switch User Dest and User Source
-		tmp := c.UserDestination
-		c.UserDestination = c.UserSource
-		c.UserSource = tmp
-		c.Title = "User " + c.UserSource + " changed " + c.UserDestination + " account."
+		c.Title = "User " + c.UserDestination + " changed " + c.UserSource + " account."
 		break
 	}
 
@@ -252,11 +249,19 @@ func NewEventFromSysmon(e EvtxLog) Event {
 		c.Extension = getExtension(c.Filename)
 		c.UserSource = ""
 		c.UserSourceDomain = ""
-		c.Title = "Process " + c.ProcessSource + " read file " + c.FullPath + "."
+		c.Title = "Process " + c.ProcessSource + " loaded file " + c.FullPath + "."
 		break
 	case 9:
+		log.Println("Sysmon 9: Oportunity to TEST")
 		c.Type = "Raw Access Read"
-		log.Fatal(c.Evidence[0])
+		c.ProcessSource = strings.ToLower(GetDataValue(e, "Image"))
+		c.ProcessSourceId = convertOct(GetDataValue(e, "ProcessId"))
+		c.FullPath = strings.ToLower(GetDataValue(e, "ImageLoaded"))
+		c.Filename = getFilename(c.FullPath)
+		c.Extension = getExtension(c.Filename)
+		c.UserSource = ""
+		c.UserSourceDomain = ""
+		c.Title = "Process " + c.ProcessSource + " read file " + c.FullPath + "."
 		break
 	case 10:
 		c.Type = "Process's Memory Access"

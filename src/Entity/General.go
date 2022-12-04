@@ -20,7 +20,7 @@ func getExtension(filename string) string {
 
 func handleErr(err error) {
 	if err != nil {
-		log.Println(err)
+		log.Panicln(err)
 	}
 }
 

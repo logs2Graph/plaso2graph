@@ -32,7 +32,7 @@ func InitializeUserCsv(output string) *os.File {
 	file, err := os.OpenFile(output+"/user.csv", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	handleError(err)
 
-	_, err = file.WriteString("Name,Domain,SID")
+	_, err = file.WriteString("Name,Username,Domain,SID,Comments")
 	return file
 }
 
@@ -170,9 +170,11 @@ func InsertUsersCsv(users []User, args map[string]interface{}) {
 func InsertUserCsv(user User, file *os.File) {
 	var str string
 
-	str += user.Name + ","
+	str += user.FullName + ","
+	str += user.Username + ","
 	str += user.Domain + ","
-	str += user.SID
+	str += user.SID + ","
+	str += user.Comments
 	str += "\n"
 
 	_, err := file.WriteString(str)

@@ -30,11 +30,15 @@ This parts lists all Entities and associated artefacts extracted from Plaso.
   - [x] Prefetch
   - [x] UserAssist
   - [x] ShellBag
-  - [ ] SRUM
+  - [x] SRUM
   - [ ] MRU
+  - [x] AMCache
+  - [ ] ShimCache
+  - [x] AppCompatCache
   - [x] Evtx Sysmon EventID 10 (memory access)
-  - [ ] Evtx Sysmon EventID 7 (Image Loaded)
+  - [x] Evtx Sysmon EventID 7 (Image Loaded)
   - [x] Evtx Sysmon EventID 9 (Raw Access Read)
+  - [x] Lnk (shortcut)
 - Scripts:
   - [ ] Evtx EventID 4103
   - [ ] Evtx EventID 4104
@@ -43,6 +47,7 @@ This parts lists all Entities and associated artefacts extracted from Plaso.
   - [x] Evtx Security
   - [x] Evtx Sysmon
   - [ ] Evtx EventID 4673 (Log User's Privileges)
+  - [x] SAM User Registry
 - Groups:
   - [ ] Evtx EventID 4627 (Group Membership)
 - Login Events:
@@ -56,6 +61,7 @@ This parts lists all Entities and associated artefacts extracted from Plaso.
 - Connection:
   - [x] Evtx Sysmon EventID 3
   - [ ] Evtx EventID 5031
+  - [ ] SRUM Connectivity?
 - WebHistory
   - [x] Chrome
   - [x] Firefox
@@ -63,12 +69,13 @@ This parts lists all Entities and associated artefacts extracted from Plaso.
   - Scheduled Tasks
     - [x] Windows Jobs
     - [ ] Evtx EventID 4699-4702
-  - [ ] Registry Run / RunOnce
+  - [x] Registry Run / RunOnce
   - [ ] Boot Execution
-  - [ ] Service
+  - [x] Service
+  - [ ] Task Cache
 - File:
-  - [ ] Evtx Sysmon Event ID 9 (Raw Access Read)
-  - [x] Evtx Sysmon Event ID 11 (File Create)
+  - [x] Evtx Sysmon Event ID 9 (Raw Access Read) (Not Tested)
+  - [x] Evtx Sysmon Event ID 11 (File Create) 
   - [x] Evtx Sysmon Event ID 23 (File Delete)
   - [x] MFT (Note: Works but will take a long time.)
 - Misc Events:
@@ -107,3 +114,23 @@ This parts lists all Entities and associated artefacts extracted from Plaso.
 - [ ] Convert Event Entities to Relationships
 - [ ] Merge Files when possible
 - [ ] Assign Computer Name by default (To support multiple computers)
+
+
+Optimisation Ideas:
+- Perform Merge inside "Add" Functions
+
+Relationships:
+- [ ] User -[DELETE]->User
+- [ ] User -[DELETE]->Group
+- [ ] User -[CREATE]->User
+- [ ] User -[CREATE]->Group
+- [ ] User -[CHANGE]->User
+- [ ] User -[CHANGE]->Group
+- [ ] User -[ENABLE]->User
+- [ ] User -[ENABLE]->Group
+- [ ] User -[DISABLE]->User
+- [ ] User -[DISABLE]->Group
+- [ ] User -[LOGON]->Computer
+- [ ] User -[LOGOFF]->Computer
+- [ ] User -[LOGON]->User
+- [ ] User -[ACCESS]->File

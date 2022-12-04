@@ -221,7 +221,7 @@ func MergeEntities(data []interface{}) []interface{} {
 	for i, v := range data {
 		switch v.(type) {
 		case []Process:
-			data[i] = MergeProcesses(data[i].([]Process), 1000)
+			data[i] = MergeProcesses(data[i].([]Process), 1000000)
 			break
 		}
 	}
@@ -241,15 +241,21 @@ func ProcessFile(path string, args map[string]interface{}) {
 		*new([]User),
 		*new([]Computer),
 		*new([]ScheduledTask),
+		*new([]Service),
 		*new([]Domain),
 		*new([]WebHistory),
 		*new([]Connection),
 		*new([]Event),
+		*new([]Registry),
 	}
 
 	var batch_size = 100000
 	var extract_treshold = 1000
 	var lines []PlasoLog
+
+	// Variable used for debug and stats
+	var total_lines int
+	var data_types []string
 
 	file, _ := os.Open(path)
 	scanner := bufio.NewScanner(file)
@@ -259,6 +265,10 @@ func ProcessFile(path string, args map[string]interface{}) {
 	var wg sync.WaitGroup
 	for scanner.Scan() {
 		line := ParseLine(scanner.Text())
+		total_lines += 1
+		if *verbose && !containsString(data_types, line.DataType) {
+			data_types = append(data_types, line.DataType)
+		}
 		lines = append(lines, line)
 		if len(lines) == batch_size {
 
@@ -303,6 +313,12 @@ func ProcessFile(path string, args map[string]interface{}) {
 	data = MergeEntities(data)
 	Extract(data, args)
 	data = nil
+
+	if *verbose {
+		fmt.Println("Total lines: ", total_lines)
+		fmt.Println("Data types: ", data_types)
+	}
+
 }
 
 func main() {
