@@ -18,7 +18,7 @@ type User struct {
 
 func findUser(users []User, user User) int {
 	for i, u := range users {
-		if u.FullName == user.FullName || u.Username == user.FullName {
+		if u.FullName == user.FullName || u.Username == user.FullName || u.FullName == user.Username {
 			return i
 		}
 	}
@@ -30,10 +30,6 @@ func mergeUser(dest User, src User) User {
 		dest.FullName = src.FullName
 		dest.Username = src.Username
 		dest.Comments = src.Comments
-	}
-
-	if dest.SID == "Not Found." {
-		dest.SID = src.SID
 	}
 
 	if dest.FullName == "" {
@@ -65,24 +61,20 @@ func newUsersFromSecurity(evtx EvtxLog) (*User, *User) { //Best Effort
 	var u1, u2 = new(User), new(User)
 
 	s_name := GetDataValue(evtx, "SubjectUserName")
-	s_SID := GetDataValue(evtx, "SubjectUserSid")
 	s_Domain := GetDataValue(evtx, "SubjectDomainName")
 	// If there is no Name, There is no user
 	if s_name != "Not Found." {
 		u1.FullName = strings.ToLower(s_name)
-		u1.SID = s_SID
 		u1.Domain = strings.ToLower(s_Domain)
 	} else {
 		u1 = nil
 	}
 
 	t_name := GetDataValue(evtx, "TargetUserName")
-	t_SID := GetDataValue(evtx, "TargetUserSid")
 	t_Domain := GetDataValue(evtx, "TargetDomainName")
 	// If there is no Name, There is no user
 	if t_name != "Not Found." {
 		u2.FullName = strings.ToLower(t_name)
-		u2.SID = t_SID
 		u2.Domain = strings.ToLower(t_Domain)
 	} else {
 		u2 = nil

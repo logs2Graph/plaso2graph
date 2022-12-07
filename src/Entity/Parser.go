@@ -253,6 +253,14 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 				process := NewProcessFrom4688(*pl.EvtxLog)
 				ps = AddProcess(ps, process)
 				break
+			case 4103:
+				// Extract Scheduled Tasks from Event Logs
+				log.Println("4103: Found but not parsed - ", pl.Xml_string)
+				break
+			case 4104:
+				// Handle Powershell Script Block
+				log.Println("4104: Found but not parsed - ", pl.Xml_string)
+				break
 			case 4699:
 				log.Println("4699: Found but not parsed - ", pl.Xml_string)
 				break

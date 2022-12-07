@@ -67,6 +67,17 @@ func constructEvent(evtx EvtxLog) Event {
 	return e
 }
 
+func swapUser(c Event) Event {
+	temp := c.UserDestination
+	c.UserDestination = c.UserSource
+	c.UserSource = temp
+
+	temp = c.UserDestinationDomain
+	c.UserDestinationDomain = c.UserSourceDomain
+	c.UserSourceDomain = temp
+	return c
+}
+
 func NewEventFromEvtx(evtx EvtxLog) Event {
 	c := constructEvent(evtx)
 
@@ -111,10 +122,12 @@ func NewEventFromEvtx(evtx EvtxLog) Event {
 		break
 	case 4720:
 		c.Type = "User Account Created"
-		c.Title = "User " + c.UserSource + "created account" + c.UserDestination + "."
+		//c = swapUser(c)
+		c.Title = "User " + c.UserSource + " created account " + c.UserDestination + "."
 		break
 	case 4722:
 		c.Type = "User Account Enabled"
+		//c = swapUser(c)
 		c.Title = "User " + c.UserSource + " enabled account" + c.UserDestination + "."
 		break
 	case 4723:
@@ -131,18 +144,22 @@ func NewEventFromEvtx(evtx EvtxLog) Event {
 		c.Type = "Password Reset Attempted"
 
 		// Switch UserDestination and UserSource
+		tmp := c.UserDestination
 		c.UserDestination = c.UserSource
-		c.UserSource = GetDataValue(evtx, "SubjectUserName")
+		c.UserSource = tmp
 
 		c.Title = "User " + c.UserDestination + " attempted to reset " + c.UserSource + "'s password."
 		break
 	case 4725:
 		c.Type = "User Account Disabled"
-		c.Title = "User " + c.UserSource + " disabled account" + c.UserDestination + "."
+		//c = swapUser(c)
+		c.Title = "User " + c.UserDestination + " disabled account" + c.UserSource + "."
 		break
 	case 4726:
 		c.Type = "User Account Deleted"
-		c.Title = "User " + c.UserSource + " deleted account" + c.UserDestination + "."
+		//c = swapUser(c)
+
+		c.Title = "User " + c.UserDestination + " deleted account" + c.UserSource + "."
 		break
 	case 4728:
 		c.Type = "Member added to global security group"

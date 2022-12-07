@@ -545,7 +545,7 @@ func persistEvent(tx neo4j.Transaction, e Event) (interface{}, error) {
 		user_source: $user_source, user_destination: $user_destination, domain_source: $domain_source,
 		domain_destination: $domain_destination, group: $group, group_domain: $group_domain, process_source: $process_source, process_source_id: $process_source_id,
 		process_target: $process_target, process_target_id: $process_target_id, fullpath: $fullpath, filename: $filename,
-		extension: $extension, evidence: $evidence})`
+		extension: $extension, computer: $computer,evidence: $evidence})`
 	parameters := map[string]interface{}{
 		"timestamp":          e.Timestamp,
 		"date":               e.Date,
@@ -565,6 +565,7 @@ func persistEvent(tx neo4j.Transaction, e Event) (interface{}, error) {
 		"filename":           e.Filename,
 		"extension":          e.Extension,
 		"evidence":           e.Evidence,
+		"computer":           e.Computer,
 	}
 	_, err := tx.Run(query, parameters)
 	return nil, err
@@ -620,7 +621,7 @@ func linkUsers(con Neo4JConnector) {
 	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		var param map[string]interface{}
-		return tx.Run("match (u:User) match (p) where u.fullname = p.user or u.username = p.user merge (u)-[:BY]->(p)", param)
+		return tx.Run(`match (u:User) match (p) where u.fullname = p.user or u.username = p.user and p.user <> "" and u.fullname <> "-" merge (u)-[:BY]->(p)`, param)
 	})
 
 	handleErr(err)
@@ -828,12 +829,145 @@ func handleImageLoaded(con Neo4JConnector) {
 
 }
 
-func handleEvents(con Neo4JConnector) {
+func handleDisableUserEvents(con Neo4JConnector) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 
-	// Create and Link File with Process based on Events "File Create" and "File Delete"
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "User Account Disabled"
+		with collect(e) as events
+		unwind events as event
+		match (actor:User)-[ACTS]->(event)-[:ON]->(target:User)
+		merge (actor)-[:DISABLE{timestamp:event.timestamp, date: event.date}]->(target)`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+
+}
+
+func handleEnableUserEvents(con Neo4JConnector) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "User Account Enabled"
+		with collect(e) as events
+		unwind events as event
+		match (actor:User)-[ACTS]->(event)-[:ON]->(target:User)
+		merge (actor)-[:ENABLE{timestamp:event.timestamp, date: event.date}]->(target)`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+}
+
+func handleDeleteUserEvents(con Neo4JConnector) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "User Account Deleted"
+		with collect(e) as events
+		unwind events as event
+		match (actor:User)-[ACTS]->(event)-[:ON]->(target:User)
+		merge (actor)-[:DELETE{timestamp:event.timestamp, date: event.date}]->(target)`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+}
+
+func handleCreateUserEvents(con Neo4JConnector) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "User Account Created"
+		with collect(e) as events
+		unwind events as event
+		match (actor:User)-[ACTS]->(event)-[:ON]->(target:User)
+		merge (actor)-[:CREATE{timestamp:event.timestamp, date: event.date}]->(target)`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+}
+
+func handleChangeUserEvents(con Neo4JConnector) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "User Account Changed"
+		with collect(e) as events
+		unwind events as event
+		match (actor:User)-[ACTS]->(event)-[:ON]->(target:User)
+		merge (actor)-[:CHANGE{timestamp:event.timestamp, date: event.date}]->(target)`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
+}
+
+func handleLogonEvents(con Neo4JConnector) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "Logon"
+		with collect(e) as events
+		unwind events as event
+		match (actor:User)-[ACTS]->(event)-[:ON]->(target:User)
+		where actor.fullname <> "-"
+		merge (actor)-[:LOGON{timestamp:event.timestamp, date: event.date}]->(target)
+		`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+
+	handleErr(err)
+
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "Logon"
+		with collect(e) as events
+		unwind events as event
+		match (event)-[:ON]->(target:User)
+		match (computer:Computer) where computer.name = event.computer
+		merge (target)-[:LOGON{timestamp:event.timestamp, date: event.date}]->(computer)
+		`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+
+	handleErr(err)
+}
+
+func handleLogoffEvents(con Neo4JConnector) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.event_type = "Logoff"
+		with collect(e) as events
+		unwind events as event
+		match (event)-[:ON]->(target:User)
+		match (computer:Computer) where computer.name = event.computer
+		merge (target)-[:LOGOFF{timestamp:event.timestamp, date: event.date}]->(computer)
+		`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+
+	handleErr(err)
+}
+
+func handleEvents(con Neo4JConnector) {
 
 	wg := sync.WaitGroup{}
 
+	// Create and Link File with Process based on Events "File Create" and "File Delete"
 	go func() {
 		wg.Add(1)
 		handleFileCreate(con)
@@ -847,12 +981,14 @@ func handleEvents(con Neo4JConnector) {
 	}()
 
 	// Link Events to Users
-
 	go func() {
 		wg.Add(1)
 		handleEventUsers(con)
 		wg.Done()
 	}()
+
+	time.Sleep(3 * time.Second)
+	wg.Wait()
 
 	// Create File based on "RawAccessRead" Events
 	go func() {
@@ -872,6 +1008,53 @@ func handleEvents(con Neo4JConnector) {
 	go func() {
 		wg.Add(1)
 		handleImageLoaded(con)
+		wg.Done()
+	}()
+
+	// Handle User -> User Events
+	go func() {
+		wg.Add(1)
+		handleCreateUserEvents(con)
+		wg.Done()
+	}()
+
+	time.Sleep(3 * time.Second)
+	wg.Wait()
+
+	go func() {
+		wg.Add(1)
+		handleDeleteUserEvents(con)
+		wg.Done()
+	}()
+
+	go func() {
+		wg.Add(1)
+		handleEnableUserEvents(con)
+		wg.Done()
+	}()
+
+	go func() {
+		wg.Add(1)
+		handleDisableUserEvents(con)
+		wg.Done()
+	}()
+
+	time.Sleep(3 * time.Second)
+	wg.Wait()
+
+	// handle Logon Events
+
+	go func() {
+		wg.Add(1)
+		handleLogonEvents(con)
+		wg.Done()
+	}()
+
+	// handle Logoff Events
+
+	go func() {
+		wg.Add(1)
+		handleLogoffEvents(con)
 		wg.Done()
 	}()
 

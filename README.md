@@ -120,17 +120,17 @@ Optimisation Ideas:
 - Perform Merge inside "Add" Functions
 
 Relationships:
-- [ ] User -[DELETE]->User
+- [x] User -[DELETE]->User
 - [ ] User -[DELETE]->Group
-- [ ] User -[CREATE]->User
+- [x] User -[CREATE]->User
 - [ ] User -[CREATE]->Group
-- [ ] User -[CHANGE]->User
+- [x] User -[CHANGE]->User
 - [ ] User -[CHANGE]->Group
-- [ ] User -[ENABLE]->User
+- [x] User -[ENABLE]->User
 - [ ] User -[ENABLE]->Group
-- [ ] User -[DISABLE]->User
+- [x] User -[DISABLE]->User
 - [ ] User -[DISABLE]->Group
-- [ ] User -[LOGON]->Computer
-- [ ] User -[LOGOFF]->Computer
-- [ ] User -[LOGON]->User
+- [x] User -[LOGON]->Computer
+- [x] User -[LOGOFF]->Computer
+- [x] User -[LOGON]->User
 - [ ] User -[ACCESS]->File
