@@ -20,6 +20,11 @@ type EvtxLog struct {
 			Text       string `xml:",chardata"`
 			SystemTime string `xml:"SystemTime,attr"`
 		} `xml:"TimeCreated"`
+		Execution struct {
+			Text      string `xml:",chardata"`
+			ProcessID string `xml:"ProcessID,attr"`
+			ThreadID  string `xml:"ThreadID,attr"`
+		} `xml:"Execution"`
 		EventRecordID string `xml:"EventRecordID"`
 		Correlation   string `xml:"Correlation"`
 		Channel       string `xml:"Channel"`
@@ -131,7 +136,7 @@ func GetDataValue(evtx EvtxLog, name string) string {
 
 func ParseEntities(data []interface{}, lines []PlasoLog) []interface{} {
 	for _, line := range lines {
-		t_ps, t_users, t_computers, t_domains, t_tasks, t_services, t_webhistories, t_files, t_connections, t_events, t_registries := ParseEntity(line)
+		t_ps, t_scriptblocks, t_users, t_groups, t_computers, t_domains, t_tasks, t_services, t_webhistories, t_files, t_connections, t_events, t_registries := ParseEntity(line)
 		for i, _ := range data {
 			switch data[i].(type) {
 			case []Process:
@@ -167,6 +172,12 @@ func ParseEntities(data []interface{}, lines []PlasoLog) []interface{} {
 			case []Registry:
 				data[i] = UnionRegistries(data[i].([]Registry), t_registries)
 				break
+			case []Group:
+				data[i] = UnionGroups(data[i].([]Group), t_groups)
+				break
+			case []ScriptBlock:
+				data[i] = UnionScriptBlocks(data[i].([]ScriptBlock), t_scriptblocks)
+				break
 			}
 		}
 	}
@@ -196,8 +207,9 @@ func ParseEvtx(data string) *EvtxLog {
 	return &evtxLog
 }
 
-func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []ScheduledTask, []Service, []WebHistory, []File, []Connection, []Event, []Registry) {
+func ParseEntity(pl PlasoLog) ([]Process, []ScriptBlock, []User, []Group, []Computer, []Domain, []ScheduledTask, []Service, []WebHistory, []File, []Connection, []Event, []Registry) {
 	var ps []Process
+	var scriptblocks []ScriptBlock
 	var users []User
 	var computers []Computer
 	var domains []Domain
@@ -208,6 +220,7 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 	var events []Event
 	var services []Service
 	var registries []Registry
+	var groups []Group
 
 	switch pl.DataType {
 	case "windows:evtx:record":
@@ -248,6 +261,9 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 			case 4673:
 				log.Fatal("4673 : ", pl.Xml_string)
 				break
+			case 4627:
+				log.Fatal("4627 : ", pl.Xml_string)
+				break
 			case 4688:
 				//Extract Processes from Event Logs
 				process := NewProcessFrom4688(*pl.EvtxLog)
@@ -255,11 +271,13 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 				break
 			case 4103:
 				// Extract Scheduled Tasks from Event Logs
-				log.Println("4103: Found but not parsed - ", pl.Xml_string)
+				scriptblock := NewScriptBlockFrom4103(*pl.EvtxLog)
+				scriptblocks = AddScriptBlock(scriptblocks, scriptblock)
 				break
 			case 4104:
 				// Handle Powershell Script Block
-				log.Println("4104: Found but not parsed - ", pl.Xml_string)
+				scriptblock := NewScriptBlockFrom4104(*pl.EvtxLog)
+				scriptblocks = AddScriptBlock(scriptblocks, scriptblock)
 				break
 			case 4699:
 				log.Println("4699: Found but not parsed - ", pl.Xml_string)
@@ -279,6 +297,50 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 			case 4705:
 				log.Println("4705: Found but not parsed - ", pl.Xml_string)
 				break
+			case 4728:
+				e := NewEventFromEvtx(*pl.EvtxLog)
+				g := NewGroupFromSecurity(*pl.EvtxLog)
+				events = AddEvent(events, e)
+				groups = AddGroup(groups, g)
+				break
+			case 4729:
+				e := NewEventFromEvtx(*pl.EvtxLog)
+				g := NewGroupFromSecurity(*pl.EvtxLog)
+				events = AddEvent(events, e)
+				groups = AddGroup(groups, g)
+				break
+			case 4731:
+				e := NewEventFromEvtx(*pl.EvtxLog)
+				g := NewGroupFromSecurity(*pl.EvtxLog)
+				events = AddEvent(events, e)
+				groups = AddGroup(groups, g)
+				break
+			case 4732:
+				e := NewEventFromEvtx(*pl.EvtxLog)
+				g := NewGroupFromSecurity(*pl.EvtxLog)
+				events = AddEvent(events, e)
+				groups = AddGroup(groups, g)
+				break
+			case 4733:
+				e := NewEventFromEvtx(*pl.EvtxLog)
+				g := NewGroupFromSecurity(*pl.EvtxLog)
+				events = AddEvent(events, e)
+				groups = AddGroup(groups, g)
+				break
+			case 4735:
+				e := NewEventFromEvtx(*pl.EvtxLog)
+				g := NewGroupFromSecurity(*pl.EvtxLog)
+				events = AddEvent(events, e)
+				groups = AddGroup(groups, g)
+				break
+			case 4737:
+				e := NewEventFromEvtx(*pl.EvtxLog)
+				g := NewGroupFromSecurity(*pl.EvtxLog)
+				events = AddEvent(events, e)
+				groups = AddGroup(groups, g)
+				break
+			case 5131:
+				log.Fatal("5131 : ", pl.Xml_string)
 			default:
 				e := NewEventFromEvtx(*pl.EvtxLog)
 				events = AddEvent(events, e)
@@ -411,5 +473,5 @@ func ParseEntity(pl PlasoLog) ([]Process, []User, []Computer, []Domain, []Schedu
 
 	}
 
-	return ps, users, computers, domains, tasks, services, webhistories, files, connections, events, registries
+	return ps, scriptblocks, users, groups, computers, domains, tasks, services, webhistories, files, connections, events, registries
 }

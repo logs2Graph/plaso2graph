@@ -105,6 +105,8 @@ func NewEventFromEvtx(evtx EvtxLog) Event {
 		c.Type = "Explicit Credential used"
 		c.Title = "User " + c.UserSource + " used explicit credentials."
 		break
+	case 4649:
+		log.Fatal("Event 4649")
 	case 4638:
 		c.Type = "User Account Changed"
 		c.Title = "User " + c.UserDestination + " changed " + c.UserSource + " account."
@@ -157,9 +159,15 @@ func NewEventFromEvtx(evtx EvtxLog) Event {
 		break
 	case 4726:
 		c.Type = "User Account Deleted"
-		//c = swapUser(c)
-
 		c.Title = "User " + c.UserDestination + " deleted account" + c.UserSource + "."
+		break
+	case 4727:
+		c.Type = "Security Enabled Global Group Created"
+		c.GroupName = c.UserSource
+		c.GroupDomain = c.UserSourceDomain
+		c.UserSource = ""
+		c.UserSourceLogonID = ""
+		c.Title = c.UserDestination + " created group " + c.GroupName + "."
 		break
 	case 4728:
 		c.Type = "Member added to global security group"
@@ -178,7 +186,12 @@ func NewEventFromEvtx(evtx EvtxLog) Event {
 		c.Title = "User " + c.UserSource + " removed from group " + c.GroupName + " by " + c.UserDestination + "."
 		break
 	case 4730:
-		log.Fatal("4730: ", c.Evidence[0])
+		c.Type = "Security Enabled Global Group Deleted"
+		c.GroupName = c.UserSource
+		c.GroupDomain = c.UserSourceDomain
+		c.UserSource = ""
+		c.UserSourceLogonID = ""
+		c.Title = c.UserDestination + " deleted group " + c.GroupName + "."
 		break
 	case 4731:
 		c.Type = "Security Enabled Local Group Created"
@@ -186,7 +199,7 @@ func NewEventFromEvtx(evtx EvtxLog) Event {
 		c.GroupDomain = c.UserSourceDomain
 		c.UserSource = ""
 		c.UserSourceLogonID = ""
-		c.Title = c.GroupName + " group was enabled	 by " + c.UserDestination + "."
+		c.Title = c.GroupName + " group was created	 by " + c.UserDestination + "."
 		break
 	case 4732:
 		c.Type = "Member added to Local Security Group"
@@ -205,24 +218,28 @@ func NewEventFromEvtx(evtx EvtxLog) Event {
 		c.Title = c.UserSource + " Removed from local security group " + c.GroupDomain + " by " + c.UserDestination + "."
 		break
 	case 4734:
-		log.Fatal("4734: ", c.Evidence[0])
+		c.Type = "Security Enabled Local Group Deleted"
+		c.GroupName = c.UserSource
+		c.GroupDomain = c.UserSourceDomain
+		c.UserSource = ""
+		c.UserSourceLogonID = ""
+		c.Title = c.UserDestination + " deleted group " + c.GroupName + "."
 		break
 	case 4735:
-		c.Type = "Local Security Group Enabled"
+		c.Type = "Security-enabled local group was changed."
 		c.GroupName = c.UserSource
 		c.GroupDomain = c.UserSourceDomain
 		c.UserSource = ""
 		c.UserSourceDomain = ""
-		c.Title = "Local security group " + c.UserSource + " enabled by " + c.UserDestination + "."
+		c.Title = "Global security group " + c.UserSource + " was changed by " + c.UserDestination + "."
 		break
 	case 4737:
 		c.Type = "Security-enabled global group was changed."
-		c.Type = "Local Security Group Enabled"
 		c.GroupName = c.UserSource
 		c.GroupDomain = c.UserSourceDomain
 		c.UserSource = ""
 		c.UserSourceDomain = ""
-		c.Title = "Global security group " + c.UserSource + " changed by " + c.UserDestination + "."
+		c.Title = "Global security group " + c.UserSource + " was changed by " + c.UserDestination + "."
 		break
 	case 4738:
 		c.Type = "User Account Changed"

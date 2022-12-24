@@ -237,8 +237,10 @@ func printAlloc() {
 func ProcessFile(path string, args map[string]interface{}) {
 	var data = []interface{}{
 		*new([]Process),
+		*new([]ScriptBlock),
 		*new([]File),
 		*new([]User),
+		*new([]Group),
 		*new([]Computer),
 		*new([]ScheduledTask),
 		*new([]Service),

@@ -73,8 +73,16 @@ func Neo4jExtract(data []interface{}, args map[string]interface{}) {
 			InsertProcessesNeo4j(con, d.([]Process))
 			break
 
+		case []ScriptBlock:
+			InsertScriptBlocksNeo4j(con, d.([]ScriptBlock))
+			break
+
 		case []User:
 			InsertUsersNeo4j(con, d.([]User))
+			break
+
+		case []Group:
+			InsertGroupsNeo4j(con, d.([]Group))
 			break
 
 		case []File:
@@ -139,11 +147,27 @@ func ParrallelNeo4jExtract(data []interface{}, args map[string]interface{}) {
 			}()
 			break
 
+		case []ScriptBlock:
+			go func() {
+				wg.Add(1)
+				defer wg.Done()
+				InsertScriptBlocksNeo4j(con, d.([]ScriptBlock))
+			}()
+			break
+
 		case []User:
 			go func() {
 				wg.Add(1)
 				defer wg.Done()
 				InsertUsersNeo4j(con, d.([]User))
+			}()
+			break
+
+		case []Group:
+			go func() {
+				wg.Add(1)
+				defer wg.Done()
+				InsertGroupsNeo4j(con, d.([]Group))
 			}()
 			break
 
@@ -232,6 +256,13 @@ func Neo4jPostProcessing(args map[string]interface{}) {
 		linkUsers(con)
 	}()
 
+	fmt.Println("Linking ScriptBlocks...")
+	go func() {
+		wg.Add(1)
+		linkScriptBlock(con)
+		wg.Done()
+	}()
+
 	fmt.Println("Linking computers...")
 	go func() {
 		wg.Add(1)
@@ -300,6 +331,40 @@ func persistProcess(tx neo4j.Transaction, p Process) (interface{}, error) {
 	return nil, err
 }
 
+func InsertScriptBlocksNeo4j(con Neo4JConnector, sb []ScriptBlock) {
+	for _, s := range sb {
+		InsertScriptBlockNeo4j(con, s)
+	}
+}
+
+func InsertScriptBlockNeo4j(con Neo4JConnector, s ScriptBlock) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		return persistScriptBlock(tx, s)
+	})
+	handleErr(err)
+}
+
+func persistScriptBlock(tx neo4j.Transaction, s ScriptBlock) (interface{}, error) {
+	query := `CREATE (:ScriptBlock {date: $date, timestamp: $timestamp, scriptblockid: $scriptblockid, scriptblocktext: $scriptblocktext, context: $context, 
+		process_id: $processid, message_number: $message_number, message_total: $message_total, path: $path, computer: $computer, evidence: $evidence})`
+	parameters := map[string]interface{}{
+		"date":            s.Date,
+		"timestamp":       s.Timestamp,
+		"scriptblockid":   s.ScriptBlockID,
+		"scriptblocktext": s.Text,
+		"processid":       s.ProcessID,
+		"message_number":  s.MessageNumber,
+		"message_total":   s.MessageTotal,
+		"path":            s.Path,
+		"computer":        s.Computer,
+		"context":         s.Context,
+		"evidence":        s.Evidence,
+	}
+	_, err := tx.Run(query, parameters)
+	return nil, err
+}
+
 func InsertUsersNeo4j(con Neo4JConnector, users []User) {
 	for _, u := range users {
 		InsertUserNeo4j(con, u)
@@ -322,6 +387,32 @@ func persistUser(tx neo4j.Transaction, u User) (interface{}, error) {
 		"comments": u.Comments,
 		"sid":      u.SID,
 		"domain":   u.Domain,
+	}
+	_, err := tx.Run(query, parameters)
+	return nil, err
+}
+
+func InsertGroupsNeo4j(con Neo4JConnector, groups []Group) {
+	for _, g := range groups {
+		InsertGroupNeo4j(con, g)
+	}
+}
+
+func InsertGroupNeo4j(con Neo4JConnector, g Group) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		return persistGroup(tx, g)
+	})
+	handleErr(err)
+}
+
+func persistGroup(tx neo4j.Transaction, g Group) (interface{}, error) {
+	query := "CREATE (:Group {name: $name, domain: $domain, computer:$computer, evidence: $evidence})"
+	parameters := map[string]interface{}{
+		"name":     g.Name,
+		"domain":   g.Domain,
+		"computer": g.Computer,
+		"evidence": g.Evidence,
 	}
 	_, err := tx.Run(query, parameters)
 	return nil, err
@@ -617,6 +708,56 @@ func linkProcess(con Neo4JConnector) {
 
 }
 
+func linkGroup(con Neo4JConnector) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	// Link group to event to prepare for future query
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (e:Event) where e.group <> ""
+		match (g:Group) where e.group = g.name and e.group_domain = g.domain
+		merge (e)-[:ABOUT]->(g)`
+		var param map[string]interface{}
+		return tx.Run(query, param)
+	})
+
+	handleErr(err)
+
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (u:User)-->(e:Event)-->(g:Group) where e.event_type =~ "(?i).*enable.*"
+		merge (u)-[:ENABLE{timestamp:e.timestamp, date: e.date}]->(g)`
+		var param map[string]interface{}
+		return tx.Run(query, param)
+	})
+	handleErr(err)
+
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (u:User)-->(e:Event)-->(g:Group) where e.event_type =~ "(?i).*disable.*"
+		merge (u)-[:DISABLE{timestamp:e.timestamp, date: e.date}]->(g)`
+		var param map[string]interface{}
+		return tx.Run(query, param)
+	})
+	handleErr(err)
+
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (u:User)<--(e:Event)-->(g:Group) match (e)<--(source:User)
+		where e.event_type =~ "(?i).*added.*"
+		return e.group`
+		var param map[string]interface{}
+		return tx.Run(query, param)
+	})
+	handleErr(err)
+
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (u:User)<--(e:Event)-->(g:Group) match (e)<--(source:User)
+		where e.event_type =~ "(?i).*removed.*"
+		merge (u)-[:MemberOf{removed_timestamp: e.timestamp, removed_date:e.date}]->(g)`
+		var param map[string]interface{}
+		return tx.Run(query, param)
+	})
+	handleErr(err)
+
+}
+
 func linkUsers(con Neo4JConnector) {
 	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
@@ -632,6 +773,25 @@ func linkComputers(con Neo4JConnector) {
 	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		var param map[string]interface{}
 		return tx.Run("match (c:Computer) match (p) where c.name = p.computer merge (c)-[:ON]->(p)", param)
+	})
+	handleErr(err)
+}
+
+func linkScriptBlock(con Neo4JConnector) {
+	//create link based on pid, ppid and name. Quick Filter to avoid some duplicates
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (s:ScriptBlock) match(p:Process) where p.pid = s.process_id and p.timestamp > s.timestamp
+		merge (p)-[:EXECUTE]->(s)`
+		var param map[string]interface{}
+		return tx.Run(query, param)
+	})
+	handleErr(err)
+
+	//Remove duplicates
+	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		var param map[string]interface{}
+		return tx.Run("match (m)-[r:EXECUTE]->(n:ScriptBlock)<-[s:EXECUTE]-(o) where n.timestamp - m.timestamp < n.timestamp - o.timestamp delete s", param)
 	})
 	handleErr(err)
 }
