@@ -49,7 +49,7 @@ func containsProcess(ps []Process, p Process) bool {
 }
 
 func AddProcess(ps []Process, p Process) []Process {
-	if p.Filename != "" {
+	if containsProcess(ps, p) {
 		ps = append(ps, p)
 	}
 	return ps
@@ -67,7 +67,7 @@ func removeProcess(array []Process, index int) []Process {
 	return array[:len(array)-1]
 }
 
-// Merge Last 2 * batch_size process
+// MergeProcesses Merge Last 2 * batch_size process
 func MergeProcesses(processes []Process, approx int) []Process {
 
 	for i := 0; i < len(processes); i++ {

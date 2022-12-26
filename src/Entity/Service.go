@@ -8,6 +8,7 @@ type Service struct {
 	ServiceType  string
 	StartType    string
 	ErrorControl string
+	Computer     string
 	Evidence     []string
 }
 
@@ -64,7 +65,7 @@ func NewService(pl PlasoLog) Service {
 	service.Filename = pl.ImagePath
 	service.ServiceType = ServiceTypeMap[pl.ServiceType]
 	service.StartType = StartTypeMap[pl.StartType]
-	service.ErrorControl = StartTypeMap[pl.ErrorControl]
+	service.ErrorControl = ErrorControlMap[pl.ErrorControl]
 	service.Dll = pl.ServiceDll
 	service.Evidence = append(service.Evidence, pl.Message)
 	service.User = pl.ObjectName

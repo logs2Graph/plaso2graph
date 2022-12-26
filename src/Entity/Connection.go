@@ -14,8 +14,8 @@ type Connection struct {
 	SourcePort      int
 	DestinationIP   string
 	DestinationPort int
-	Protocol        string
-	Intitiated      bool
+	Protocol  string
+	Initiated bool
 
 	Computer   string
 	User       string
@@ -69,14 +69,14 @@ func NewConnectionFromSysmon3(evtx EvtxLog) Connection {
 	}
 
 	c.Protocol = GetDataValue(evtx, "Protocol")
-	c.Intitiated = GetDataValue(evtx, "Initiated") == "true"
+	c.Initiated = GetDataValue(evtx, "Initiated") == "true"
 
 	c.ProcessName = GetDataValue(evtx, "Image")
 	tmp_str = GetDataValue(evtx, "ProcessId")
 	if tmp_str != "Not Found." {
-		tmp_int, err := strconv.ParseInt(tmp_str, 10, 64)
+		tmpInt, err := strconv.ParseInt(tmp_str, 10, 64)
 		handleErr(err)
-		c.ProcessId = int(tmp_int)
+		c.ProcessId = int(tmpInt)
 	}
 
 	tmp_str = GetDataValue(evtx, "User")

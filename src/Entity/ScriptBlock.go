@@ -50,8 +50,8 @@ func NewScriptBlockFrom4104(evtx EvtxLog) ScriptBlock {
 	var s ScriptBlock
 
 	s.Computer = evtx.System.Computer
-	xml_byte, _ := xml.Marshal(evtx)
-	s.Evidence = string(xml_byte)
+	xmlByte, _ := xml.Marshal(evtx)
+	s.Evidence = string(xmlByte)
 
 	t, err := time.Parse(time.RFC3339Nano, evtx.System.TimeCreated.SystemTime)
 	handleErr(err)
@@ -63,14 +63,14 @@ func NewScriptBlockFrom4104(evtx EvtxLog) ScriptBlock {
 	if len(evtx.EventData.Data) == 0 {
 		return s
 	}
-	int_str := GetDataValue(evtx, "MessageNumber")
-	if int_str == "Not Found." {
+	intStr := GetDataValue(evtx, "MessageNumber")
+	if intStr == "Not Found." {
 		s.Text = GetDataValue(evtx, "Payload")
 		s.Context = GetDataValue(evtx, "ContextInfo")
 		return s
 	}
 
-	i64, err = strconv.ParseInt(int_str, 0, 64)
+	i64, err = strconv.ParseInt(intStr, 0, 64)
 	handleErr(err)
 	s.MessageNumber = int(i64)
 
@@ -90,8 +90,8 @@ func NewScriptBlockFrom4103(evtx EvtxLog) ScriptBlock {
 	var s ScriptBlock
 
 	s.Computer = evtx.System.Computer
-	xml_byte, _ := xml.Marshal(evtx)
-	s.Evidence = string(xml_byte)
+	xmlByte, _ := xml.Marshal(evtx)
+	s.Evidence = string(xmlByte)
 
 	t, err := time.Parse(time.RFC3339Nano, evtx.System.TimeCreated.SystemTime)
 	handleErr(err)

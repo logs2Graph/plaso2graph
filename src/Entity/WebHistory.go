@@ -16,6 +16,7 @@ type WebHistory struct {
 	Title           string
 	User            string
 	VisitCount      int
+	Computer        string
 	Evidence        []string
 }
 
@@ -66,7 +67,7 @@ func NewWebHistoryFromChrome(pl PlasoLog) WebHistory {
 	wh.Timestamp = int(pl.Timestamp)
 	wh.LastTimeVisited = time.UnixMicro(int64(pl.Timestamp / 1000000)).In(utc)
 
-	wh.VisitCount = int(pl.TypedCount)
+	wh.VisitCount = pl.TypedCount
 
 	wh.Evidence = append(wh.Evidence, pl.Message)
 

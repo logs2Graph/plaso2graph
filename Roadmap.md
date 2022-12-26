@@ -65,7 +65,6 @@ It also shows the differents relationships between the entities and the ones tha
   - AV Disabled
   - FW Changes
   - GPO Changes
-  - Group Changes
   - User Changes
     - [x] EventID 4738 (A user account was changed)
     - [x] EventID 4720 (User Created)
@@ -92,7 +91,7 @@ It also shows the differents relationships between the entities and the ones tha
   - [] Xml
   - [] Csv
 - Improvements
-- [] Convert Event Entities to Relationships
+- [x] Convert Event Entities to Relationships
 - [] Merge Files when possible
 - [] Assign Computer Name by default (To support multiple computers)
 

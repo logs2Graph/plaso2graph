@@ -16,6 +16,7 @@ type File struct {
 	Extension     string
 	Hash          string
 	PeType        string
+	Computer      string
 	Evidence      []string
 }
 
@@ -39,12 +40,12 @@ func NewFileFromMFT(pl PlasoLog) File {
 		f.FullPath = pl.PathHints[0]
 	}
 	// Parse the filename from the full path
-	tmp_split := strings.Split(f.FullPath, "\\")
-	f.Filename = tmp_split[len(tmp_split)-1]
+	tmpSplit := strings.Split(f.FullPath, "\\")
+	f.Filename = tmpSplit[len(tmpSplit)-1]
 
 	// Parse the extension from the filename
-	tmp_split = strings.Split(f.Filename, ".")
-	f.Extension = tmp_split[len(tmp_split)-1]
+	tmpSplit = strings.Split(f.Filename, ".")
+	f.Extension = tmpSplit[len(tmpSplit)-1]
 
 	var utc, _ = time.LoadLocation("UTC")
 	f.Timestamp = int(pl.Timestamp)
@@ -68,10 +69,10 @@ func NewFileFromSysmon11(evtx EvtxLog) File {
 	f.Date = t
 	f.Timestamp = int(t.UnixNano())
 
-	xml_string, err := xml.Marshal(evtx)
+	xmlString, err := xml.Marshal(evtx)
 	handleErr(err)
 	f.TimestampDesc = "Creation Time"
-	f.Evidence = append(f.Evidence, string(xml_string))
+	f.Evidence = append(f.Evidence, string(xmlString))
 
 	return f
 }
@@ -87,10 +88,10 @@ func NewFileFromSysmon23(evtx EvtxLog) File {
 	f.Date = t
 	f.Timestamp = int(t.UnixNano())
 
-	xml_string, err := xml.Marshal(evtx)
+	xmlString, err := xml.Marshal(evtx)
 	handleErr(err)
 	f.TimestampDesc = "Deletion Time"
-	f.Evidence = append(f.Evidence, string(xml_string))
+	f.Evidence = append(f.Evidence, string(xmlString))
 
 	return f
 }

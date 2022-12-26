@@ -6,14 +6,14 @@ import (
 )
 
 func getFilename(full_path string) string {
-	splitted_string := strings.Split(full_path, "\\")
-	return splitted_string[len(splitted_string)-1]
+	splittedString := strings.Split(full_path, "\\")
+	return splittedString[len(splittedString)-1]
 }
 
 func getExtension(filename string) string {
-	splitted_string := strings.Split(filename, ".")
-	if len(splitted_string) > 1 {
-		return splitted_string[len(splitted_string)-1]
+	splittedString := strings.Split(filename, ".")
+	if len(splittedString) > 1 {
+		return splittedString[len(splittedString)-1]
 	}
 	return ""
 }

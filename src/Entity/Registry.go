@@ -10,6 +10,8 @@ type Registry struct {
 	Hive                       string
 	Path                       string
 	Entries                    []string
+	Computer                   string
+	Evidence                   []string
 }
 
 func AddRegistry(registries []Registry, r Registry) []Registry {
@@ -36,5 +38,6 @@ func NewRegistry(pl PlasoLog) Registry {
 	r.Hive = pl.Filename
 	r.Path = pl.KeyPath
 	r.Entries = pl.Entries
+	r.Evidence = append(r.Evidence, pl.Message)
 	return r
 }

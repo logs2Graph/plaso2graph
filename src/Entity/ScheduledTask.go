@@ -10,6 +10,8 @@ type ScheduledTask struct {
 	Comment     string
 	Trigger     string
 	User        string
+	Computer    string
+	Evidence    []string
 }
 
 // containsScheduledTask check if a ScheduledTask is already in a slice of ScheduledTask
@@ -37,26 +39,12 @@ func UnionScheduledTasks(dest []ScheduledTask, src []ScheduledTask) []ScheduledT
 	return dest
 }
 
-// GetScheduledTask return a slice of ScheduledTask from a slice of PlasoLog
-func GetScheduledTasks(data []PlasoLog) []ScheduledTask {
-	var res []ScheduledTask
-
-	// Iterate over all logs
-	for _, d := range data {
-		switch d.DataType {
-		case "windows:tasks:job":
-			res = AddScheduledTask(res, NewScheduledTaskFromTask(d))
-		}
-	}
-
-	return res
-}
-
 func NewScheduledTaskFromTask(task PlasoLog) ScheduledTask {
 	var res ScheduledTask
 
 	res.Application = task.Application
 	res.Comment = task.Comment
+	res.Evidence = append(res.Evidence, task.Message)
 
 	//Parse Trigger and User
 	r, _ := regexp.Compile(`by: (?P<User>.*) Working directory.*Trigger type: (?P<Trigger>.*)`)

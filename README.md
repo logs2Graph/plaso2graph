@@ -30,11 +30,19 @@ Usage of ./plaso2graph:
     	Verbose mode
 ```
 
-## Tech Choice
+## Installation
 
-### Why Plaso ?
+To Build the project, you need to have Go installed on your machine. Then you can run the following command:
 
-We use Plaso as input because it parse a large collection of artefact and order them into a timeline, this provide us a standard and easier way to process artefacts and also make simpler the merge between artefacts.
+```
+go build -o plaso2graph
+```
 
-For example, a process execution may create an Evtx log, a prefetch and a SRUM artefact, the fact that __Plaso__ order the artefact by their timestamp make those artefacts close in the file and let us merge them without rereading the entire array.
+And it's done, you can now use the tool.
+
+However, you still need an instance of Neo4j accessible for where you run the tool. You can download it here: https://neo4j.com/download/
+
+## Examples
+
+Here is some examples of the output of the tool:
 

@@ -41,8 +41,8 @@ func NewGroupFromSecurity(evtx EvtxLog) Group {
 	g.Name = GetDataValue(evtx, "TargetUserName")
 	g.Domain = GetDataValue(evtx, "TargetDomainName")
 
-	xml_bytes, _ := xml.Marshal(evtx)
+	xmlBytes, _ := xml.Marshal(evtx)
 
-	g.Evidence = append(g.Evidence, string(xml_bytes))
+	g.Evidence = append(g.Evidence, string(xmlBytes))
 	return g
 }

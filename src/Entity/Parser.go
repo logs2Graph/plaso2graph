@@ -134,49 +134,100 @@ func GetDataValue(evtx EvtxLog, name string) string {
 	return "Not Found."
 }
 
-func ParseEntities(data []interface{}, lines []PlasoLog) []interface{} {
+func ParseEntities(data []interface{}, lines []PlasoLog, args map[string]interface{}) []interface{} {
 	for _, line := range lines {
-		t_ps, t_scriptblocks, t_users, t_groups, t_computers, t_domains, t_tasks, t_services, t_webhistories, t_files, t_connections, t_events, t_registries := ParseEntity(line)
-		for i, _ := range data {
+		tPs, tScriptblocks, tUsers, tGroups, tComputers, tDomains, tTasks, tServices, tWebhistories, tFiles, tConnections, tEvents, tRegistries := ParseEntity(line)
+		for i := range data {
 			switch data[i].(type) {
 			case []Process:
-				data[i] = UnionProcesses(data[i].([]Process), t_ps)
+				for j := range tPs {
+					if tPs[j].Computer == "" {
+						tPs[j].Computer = args["computer"].(string)
+					}
+				}
+				data[i] = UnionProcesses(data[i].([]Process), tPs)
 				break
 			case []User:
-				data[i] = UnionUsers(data[i].([]User), t_users)
+				data[i] = UnionUsers(data[i].([]User), tUsers)
 				break
 			case []Computer:
-				data[i] = UnionComputers(data[i].([]Computer), t_computers)
+				data[i] = UnionComputers(data[i].([]Computer), tComputers)
 				break
 			case []Domain:
-				data[i] = UnionDomains(data[i].([]Domain), t_domains)
+				data[i] = UnionDomains(data[i].([]Domain), tDomains)
 				break
 			case []ScheduledTask:
-				data[i] = UnionScheduledTasks(data[i].([]ScheduledTask), t_tasks)
+				for j := range tTasks {
+					if tTasks[j].Computer == "" {
+						tTasks[j].Computer = args["computer"].(string)
+					}
+				}
+				data[i] = UnionScheduledTasks(data[i].([]ScheduledTask), tTasks)
 				break
 			case []Service:
-				data[i] = UnionServices(data[i].([]Service), t_services)
+				for j := range tServices {
+					if tServices[j].Computer == "" {
+						tServices[j].Computer = args["computer"].(string)
+					}
+				}
+				data[i] = UnionServices(data[i].([]Service), tServices)
 				break
 			case []WebHistory:
-				data[i] = UnionWebHistories(data[i].([]WebHistory), t_webhistories)
+				for j := range tWebhistories {
+					if tWebhistories[j].Computer == "" {
+						tWebhistories[j].Computer = args["computer"].(string)
+					}
+				}
+
+				data[i] = UnionWebHistories(data[i].([]WebHistory), tWebhistories)
 				break
 			case []File:
-				data[i] = UnionFiles(data[i].([]File), t_files)
+				for j := range tFiles {
+					if tFiles[j].Computer == "" {
+						tFiles[j].Computer = args["computer"].(string)
+					}
+				}
+
+				data[i] = UnionFiles(data[i].([]File), tFiles)
 				break
 			case []Connection:
-				data[i] = UnionConnections(data[i].([]Connection), t_connections)
+				for j := range tConnections {
+					if tConnections[j].Computer == "" {
+						tConnections[j].Computer = args["computer"].(string)
+					}
+				}
+
+				data[i] = UnionConnections(data[i].([]Connection), tConnections)
 				break
 			case []Event:
-				data[i] = UnionEvents(data[i].([]Event), t_events)
+				for j := range tEvents {
+					if tEvents[j].Computer == "" {
+						tEvents[j].Computer = args["computer"].(string)
+					}
+				}
+
+				data[i] = UnionEvents(data[i].([]Event), tEvents)
 				break
 			case []Registry:
-				data[i] = UnionRegistries(data[i].([]Registry), t_registries)
+				for j := range tRegistries {
+					if tRegistries[j].Computer == "" {
+						tRegistries[j].Computer = args["computer"].(string)
+					}
+				}
+
+				data[i] = UnionRegistries(data[i].([]Registry), tRegistries)
 				break
 			case []Group:
-				data[i] = UnionGroups(data[i].([]Group), t_groups)
+				data[i] = UnionGroups(data[i].([]Group), tGroups)
 				break
 			case []ScriptBlock:
-				data[i] = UnionScriptBlocks(data[i].([]ScriptBlock), t_scriptblocks)
+				for j := range tScriptblocks {
+					if tScriptblocks[j].Computer == "" {
+						tScriptblocks[j].Computer = args["computer"].(string)
+					}
+				}
+
+				data[i] = UnionScriptBlocks(data[i].([]ScriptBlock), tScriptblocks)
 				break
 			}
 		}
@@ -186,7 +237,8 @@ func ParseEntities(data []interface{}, lines []PlasoLog) []interface{} {
 
 func ParseLine(data string) PlasoLog {
 	var output PlasoLog
-	json.Unmarshal([]byte(data), &output)
+	err := json.Unmarshal([]byte(data), &output)
+	handleErr(err)
 
 	//fmt.Println(json_obj["timestamp"])
 
@@ -202,7 +254,8 @@ func ParseEvtx(data string) *EvtxLog {
 	var evtxLog EvtxLog
 
 	//fmt.Println([]byte(data))
-	xml.Unmarshal([]byte(data), &evtxLog)
+	err := xml.Unmarshal([]byte(data), &evtxLog)
+	handleErr(err)
 	//fmt.Println(fmt.Sprint(evtxLog))
 	return &evtxLog
 }

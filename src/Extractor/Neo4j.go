@@ -128,113 +128,6 @@ func Neo4jExtract(data []interface{}, args map[string]interface{}) {
 	}*/
 }
 
-func ParrallelNeo4jExtract(data []interface{}, args map[string]interface{}) {
-
-	if args["verbose"] == nil {
-		args["verbose"] = false
-	}
-
-	con := args["connector"].(Neo4JConnector)
-
-	var wg sync.WaitGroup
-	for _, d := range data {
-		switch d.(type) {
-		case []Process:
-			go func() {
-				wg.Add(1)
-				defer wg.Done()
-				InsertProcessesNeo4j(con, d.([]Process))
-			}()
-			break
-
-		case []ScriptBlock:
-			go func() {
-				wg.Add(1)
-				defer wg.Done()
-				InsertScriptBlocksNeo4j(con, d.([]ScriptBlock))
-			}()
-			break
-
-		case []User:
-			go func() {
-				wg.Add(1)
-				defer wg.Done()
-				InsertUsersNeo4j(con, d.([]User))
-			}()
-			break
-
-		case []Group:
-			go func() {
-				wg.Add(1)
-				defer wg.Done()
-				InsertGroupsNeo4j(con, d.([]Group))
-			}()
-			break
-
-		case []File:
-			go func() {
-				wg.Add(1)
-				defer wg.Done()
-				InsertFilesNeo4j(con, d.([]File))
-			}()
-			break
-
-		case []ScheduledTask:
-			go func() {
-				wg.Add(1)
-				defer wg.Done()
-				InsertTasksNeo4j(con, d.([]ScheduledTask))
-			}()
-			break
-
-		case []Service:
-			go func() {
-				wg.Add(1)
-				defer wg.Done()
-				InsertServicesNeo4j(con, d.([]Service))
-			}()
-			break
-
-		case []Computer:
-			go func() {
-				wg.Add(1)
-				defer wg.Done()
-				InsertComputersNeo4j(con, d.([]Computer))
-			}()
-			break
-
-		case []Domain:
-			go func() {
-				wg.Add(1)
-				defer wg.Done()
-				InsertDomainsNeo4j(con, d.([]Domain))
-			}()
-			break
-
-		case []WebHistory:
-			go func() {
-				wg.Add(1)
-				defer wg.Done()
-				InsertWebHistoriesNeo4j(con, d.([]WebHistory))
-			}()
-			break
-		case []Registry:
-			go func() {
-				wg.Add(1)
-				defer wg.Done()
-				InsertRegistriesNeo4j(con, d.([]Registry))
-			}()
-			break
-
-		}
-
-	}
-	wg.Wait()
-	if args["verbose"].(bool) {
-		log.Println("Neo4j Extractor finished")
-	}
-}
-
 func Neo4jPostProcessing(args map[string]interface{}) {
 
 	wg := sync.WaitGroup{}
@@ -288,6 +181,8 @@ func Neo4jPostProcessing(args map[string]interface{}) {
 
 	time.Sleep(2 * time.Second)
 	wg.Wait()
+
+	updateIds(con)
 }
 
 func InsertProcessesNeo4j(con Neo4JConnector, ps []Process) {
@@ -457,12 +352,14 @@ func InsertTaskNeo4j(con Neo4JConnector, t ScheduledTask) {
 }
 
 func persistTask(tx neo4j.Transaction, t ScheduledTask) (interface{}, error) {
-	query := "CREATE (:ScheduledTask {application: $application, user: $user, comment: $comment, trigger: $trigger})"
+	query := "CREATE (:ScheduledTask {application: $application, user: $user, comment: $comment, trigger: $trigger, computer: $computer, evidence: $evidence})"
 	parameters := map[string]interface{}{
 		"application": t.Application,
 		"user":        t.User,
 		"comment":     t.Comment,
 		"trigger":     t.Trigger,
+		"computer":    t.Computer,
+		"evidence":    t.Evidence,
 	}
 	_, err := tx.Run(query, parameters)
 	return nil, err
@@ -483,7 +380,7 @@ func InsertServiceNeo4j(con Neo4JConnector, service Service) {
 }
 
 func persistService(tx neo4j.Transaction, s Service) (interface{}, error) {
-	query := "CREATE (:Service {name: $name, filename: $filename, service_type: $service_type, start_type: $start_type, error_control: $error_control, user: $user, dll: $dll, evidence: $evidence})"
+	query := "CREATE (:Service {name: $name, filename: $filename, service_type: $service_type, start_type: $start_type, error_control: $error_control, user: $user, computer: $computer, dll: $dll, evidence: $evidence})"
 	parameters := map[string]interface{}{
 		"name":          s.Name,
 		"filename":      s.Filename,
@@ -492,6 +389,7 @@ func persistService(tx neo4j.Transaction, s Service) (interface{}, error) {
 		"error_control": s.ErrorControl,
 		"dll":           s.Dll,
 		"user":          s.User,
+		"computer":      s.Computer,
 		"evidence":      s.Evidence,
 	}
 	_, err := tx.Run(query, parameters)
@@ -536,7 +434,7 @@ func InsertWebHistoryNeo4j(con Neo4JConnector, h WebHistory) {
 }
 
 func persistWebHistory(tx neo4j.Transaction, h WebHistory) (interface{}, error) {
-	query := "CREATE (:WebHistory {url: $url, title: $title, visit_count: $visit_count, last_visit_time: $last_visit_time, timestamp: $timestamp, path: $path, evidence: $evidence, user: $user})"
+	query := "CREATE (:WebHistory {url: $url, title: $title, visit_count: $visit_count, last_visit_time: $last_visit_time, timestamp: $timestamp, path: $path, evidence: $evidence, user: $user, computer: $computer})"
 	parameters := map[string]interface{}{
 		"url":             h.Url,
 		"title":           h.Title,
@@ -545,6 +443,7 @@ func persistWebHistory(tx neo4j.Transaction, h WebHistory) (interface{}, error) 
 		"path":            h.Path,
 		"evidence":        h.Evidence,
 		"user":            h.User,
+		"computer":        h.Computer,
 		"timestamp":       h.Timestamp,
 	}
 	_, err := tx.Run(query, parameters)
@@ -566,7 +465,7 @@ func InsertFileNeo4j(con Neo4JConnector, f File) {
 }
 
 func persistFile(tx neo4j.Transaction, f File) (interface{}, error) {
-	query := "CREATE (:File {fullpath: $fullpath, filename: $filename, extension: $extension, is_allocated: $is_allocated, date: $date, timestamp: $timestamp, timestamp_desc: $timestamp_desc, evidence: $evidence, date: $date})"
+	query := "CREATE (:File {fullpath: $fullpath, filename: $filename, extension: $extension, is_allocated: $is_allocated, date: $date, timestamp: $timestamp, timestamp_desc: $timestamp_desc, evidence: $evidence, date: $date, computer: $computer})"
 	parameters := map[string]interface{}{
 		"fullpath":       f.FullPath,
 		"filename":       f.Filename,
@@ -575,6 +474,7 @@ func persistFile(tx neo4j.Transaction, f File) (interface{}, error) {
 		"date":           f.Date,
 		"timestamp":      f.Timestamp,
 		"timestamp_desc": f.TimestampDesc,
+		"computer":       f.Computer,
 		"evidence":       f.Evidence,
 	}
 	_, err := tx.Run(query, parameters)
@@ -678,12 +578,14 @@ func InsertRegistryNeo4j(con Neo4JConnector, r Registry) {
 }
 
 func persistRegistry(tx neo4j.Transaction, r Registry) (interface{}, error) {
-	query := "CREATE (:Registry {timestamp: $timestamp, date: $date, key: $key, value: $value})"
+	query := "CREATE (:Registry {timestamp: $timestamp, date: $date, key: $key, value: $value, computer: $computer, evidence: $evidence})"
 	parameters := map[string]interface{}{
 		"timestamp": r.LastModifictationTimestamp,
 		"date":      r.LastModificationTime,
 		"key":       r.Path,
 		"value":     r.Entries,
+		"computer":  r.Computer,
+		"evidence":  r.Evidence,
 	}
 	_, err := tx.Run(query, parameters)
 	return nil, err
@@ -741,7 +643,7 @@ func linkGroup(con Neo4JConnector) {
 	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		query := `match (u:User)<--(e:Event)-->(g:Group) match (e)<--(source:User)
 		where e.event_type =~ "(?i).*added.*"
-		return e.group`
+		merge (u)-[:AddedTo{timestamp: e.timestamp, date:e.date}]->(g)`
 		var param map[string]interface{}
 		return tx.Run(query, param)
 	})
@@ -750,7 +652,7 @@ func linkGroup(con Neo4JConnector) {
 	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		query := `match (u:User)<--(e:Event)-->(g:Group) match (e)<--(source:User)
 		where e.event_type =~ "(?i).*removed.*"
-		merge (u)-[:MemberOf{removed_timestamp: e.timestamp, removed_date:e.date}]->(g)`
+		merge (u)-[:RemovedFrom{timestamp: e.timestamp, date:e.date}]->(g)`
 		var param map[string]interface{}
 		return tx.Run(query, param)
 	})
@@ -812,7 +714,7 @@ func handleConnections(con Neo4JConnector) {
 	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		query := `match (n:Connection) with collect(n) as connections
 		UNWIND connections as c
-		match (p:Process) where p.fullpath = c.process and p.pid = c.process_id and p.timestamp < c.timestamp
+		match (p:Process) where p.fullpath = c.process and p.pid = c.process_id and p.timestamp < c.timestamp and c.computer = p.computer
 		match (h:Host) where h.ip = c.ip_destination 
 		merge (p)-[r:CONNECT{port_source:c.port_source,port_destination:c.port_destination, ip_source:c.ip_source, timestamp:c.timestamp, date:c.date}]->(h)`
 
@@ -831,7 +733,7 @@ func handleFileCreate(con Neo4JConnector) {
 		query := `match (e:Event) where e.event_type = "File Created" with collect(e) as events
 		UNWIND events as event
 		create (:File {fullpath: event.fullpath, filename: event.filename, extension:event.extension, 
-		timestamp:event.timestamp, date:event.date, timestamp_desc:"Creation Time"})`
+		timestamp:event.timestamp, date:event.date, timestamp_desc:"Creation Time", computer:event.computer})`
 		parameters := map[string]interface{}{}
 		_, err := tx.Run(query, parameters)
 		return nil, err
@@ -841,8 +743,8 @@ func handleFileCreate(con Neo4JConnector) {
 	fmt.Println("Link Processes to Files based on 'File Create' and 'File Delete' Events")
 	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		query := `match (e:Event) where e.event_type = "File Created"
-		match (p:Process) where e.process_source = p.fullpath and e.process_source_id = p.pid
-		match (f:File) where f.fullpath = e.fullpath
+		match (p:Process) where e.process_source = p.fullpath and e.process_source_id = p.pid and e.computer = p.computer
+		match (f:File) where f.fullpath = e.fullpath and f.computer = e.computer
 		merge (p)-[:CREATE]->(f)`
 		parameters := map[string]interface{}{}
 		_, err := tx.Run(query, parameters)
@@ -859,7 +761,7 @@ func handleFileDelete(con Neo4JConnector) {
 		query := `match (e:Event) where e.event_type = "File Deleted" with collect(e) as events
 		UNWIND events as event
 		create (:File {fullpath: event.fullpath, filename: event.filename, extension:event.extension, 
-		timestamp:event.timestamp, date:event.date, timestamp_desc:"Deletion Time"})`
+		timestamp:event.timestamp, date:event.date, timestamp_desc:"Deletion Time", computer:event.computer})`
 		parameters := map[string]interface{}{}
 		_, err := tx.Run(query, parameters)
 		return nil, err
@@ -868,8 +770,8 @@ func handleFileDelete(con Neo4JConnector) {
 
 	_, err = sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		query := `match (e:Event) where e.event_type = "File Deleted"
-		match (p:Process) where e.process_source = p.fullpath and e.process_source_id = p.pid
-		match (f:File) where f.fullpath = e.fullpath
+		match (p:Process) where e.process_source = p.fullpath and e.process_source_id = p.pid and e.computer = p.computer
+		match (f:File) where f.fullpath = e.fullpath and f.computer = e.computer
 		merge (p)-[:DELETE]->(f)`
 		parameters := map[string]interface{}{}
 		_, err := tx.Run(query, parameters)
@@ -907,7 +809,7 @@ func handleRawAccessRead(con Neo4JConnector) {
 		query := `match (e:Event) where e.event_type = "Raw Access Read"
 		with collect(e) as events
 		unwind events as event
-		create (:File{fullpath: event.fullpath, filename: event.filename})`
+		create (:File{fullpath: event.fullpath, filename: event.filename, computer: event.computer})`
 		parameters := map[string]interface{}{}
 		_, err := tx.Run(query, parameters)
 		return nil, err
@@ -919,8 +821,8 @@ func handleRawAccessRead(con Neo4JConnector) {
 		query := `match (e:Event) where e.event_type = "Raw Access Read"
 		with collect(e) as events
 		unwind events as event
-		match (p:Process) where p.fullpath = event.process_source and p.pid = event.process_source_id and p.timestamp <= event.timestamp
-		match (f:File) where f.fullpath = event.fullpath
+		match (p:Process) where p.fullpath = event.process_source and p.pid = event.process_source_id and p.timestamp <= event.timestamp and p.computer = event.computer
+		match (f:File) where f.fullpath = event.fullpath and f.computer = event.computer
 		merge (p)-[:LOAD{timestamp:event.timestamp, date: event.date}]->(f)`
 		parameters := map[string]interface{}{}
 		_, err := tx.Run(query, parameters)
@@ -936,8 +838,8 @@ func handleMemoryAccess(con Neo4JConnector) {
 		query := `match (event:Event) where event.event_type = "Process's Memory Access"
 		with collect(event) as events
 		unwind events as e
-		match (source:Process) where source.fullpath = e.process_source and source.pid = e.process_source_id and source.timestamp <= e.timestamp
-		match (target: Process) where target.fullpath = e.process_target and target.pid = e.process_target_id
+		match (source:Process) where source.fullpath = e.process_source and source.pid = e.process_source_id and source.timestamp <= e.timestamp and e.computer = source.computer
+		match (target: Process) where target.fullpath = e.process_target and target.pid = e.process_target_id and target.timestamp <= e.timestamp and e.computer = target.computer
 		merge (source)-[:MEMORY_ACCESS{timestamp: e.timestamp, date:e.date}]->(target)`
 		parameters := map[string]interface{}{}
 		_, err := tx.Run(query, parameters)
@@ -965,7 +867,7 @@ func handleImageLoaded(con Neo4JConnector) {
 		query := `match (e:Event) where e.event_type = "Image Loaded"
 		with collect(e) as events
 		unwind events as event
-		create (:File{fullpath: event.fullpath, filename: event.filename})`
+		create (:File{fullpath: event.fullpath, filename: event.filename, computer: event.computer})`
 		parameters := map[string]interface{}{}
 		_, err := tx.Run(query, parameters)
 		return nil, err
@@ -978,8 +880,8 @@ func handleImageLoaded(con Neo4JConnector) {
 		query := `match (e:Event) where e.event_type = "Image Loaded"
 		with collect(e) as events
 		unwind events as event
-		match (p:Process) where p.fullpath = event.process_source and p.pid = event.process_source_id and p.timestamp <= event.timestamp
-		match (f:File) where f.fullpath = event.fullpath
+		match (p:Process) where p.fullpath = event.process_source and p.pid = event.process_source_id and p.computer = event.computer and p.timestamp <= event.timestamp
+		match (f:File) where f.fullpath = event.fullpath and f.computer = event.computer
 		merge (p)-[:LOAD{timestamp:event.timestamp, date: event.date}]->(f)`
 		parameters := map[string]interface{}{}
 		_, err := tx.Run(query, parameters)
@@ -1218,6 +1120,32 @@ func handleEvents(con Neo4JConnector) {
 		wg.Done()
 	}()
 
+	// handle Change User Events
+	go func() {
+		wg.Add(1)
+		handleChangeUserEvents(con)
+		wg.Done()
+	}()
+
+	// Link Events to Groups
+	go func() {
+		wg.Add(1)
+		linkGroup(con)
+		wg.Done()
+	}()
+
 	time.Sleep(2 * time.Second)
 	wg.Wait()
+}
+
+func updateIds(con Neo4JConnector) {
+	sess := con.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+
+	_, err := sess.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		query := `match (n) set n.objectid = id(n)`
+		parameters := map[string]interface{}{}
+		_, err := tx.Run(query, parameters)
+		return nil, err
+	})
+	handleErr(err)
 }

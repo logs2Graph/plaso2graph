@@ -60,22 +60,22 @@ func UnionUsers(dest []User, src []User) []User {
 func newUsersFromSecurity(evtx EvtxLog) (*User, *User) { //Best Effort
 	var u1, u2 = new(User), new(User)
 
-	s_name := GetDataValue(evtx, "SubjectUserName")
-	s_Domain := GetDataValue(evtx, "SubjectDomainName")
+	sName := GetDataValue(evtx, "SubjectUserName")
+	sDomain := GetDataValue(evtx, "SubjectDomainName")
 	// If there is no Name, There is no user
-	if s_name != "Not Found." {
-		u1.FullName = strings.ToLower(s_name)
-		u1.Domain = strings.ToLower(s_Domain)
+	if sName != "Not Found." {
+		u1.FullName = strings.ToLower(sName)
+		u1.Domain = strings.ToLower(sDomain)
 	} else {
 		u1 = nil
 	}
 
-	t_name := GetDataValue(evtx, "TargetUserName")
-	t_Domain := GetDataValue(evtx, "TargetDomainName")
+	tName := GetDataValue(evtx, "TargetUserName")
+	tDomain := GetDataValue(evtx, "TargetDomainName")
 	// If there is no Name, There is no user
-	if t_name != "Not Found." {
-		u2.FullName = strings.ToLower(t_name)
-		u2.Domain = strings.ToLower(t_Domain)
+	if tName != "Not Found." {
+		u2.FullName = strings.ToLower(tName)
+		u2.Domain = strings.ToLower(tDomain)
 	} else {
 		u2 = nil
 	}

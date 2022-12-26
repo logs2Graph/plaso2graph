@@ -60,9 +60,9 @@ func constructEvent(evtx EvtxLog) Event {
 	handleErr(err)
 	e.Date = t
 	e.Timestamp = int(t.UnixNano())
-	xml_string, err := xml.Marshal(evtx)
+	xmlString, err := xml.Marshal(evtx)
 	handleErr(err)
-	e.Evidence = append(e.Evidence, string(xml_string))
+	e.Evidence = append(e.Evidence, string(xmlString))
 
 	return e
 }
